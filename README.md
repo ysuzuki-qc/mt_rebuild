@@ -21,4 +21,7 @@ Build generic measurement job, translate it to an executable form, and execute i
 
 dictionary with several features useful for interactive calibration
 
+## mt_util
+
+Misc utilities, wrapper for typing and qubit position-index conversion.
 

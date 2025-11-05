@@ -12,7 +12,7 @@ def print_mux_config(channel_to_frequency: dict[str, FrequencyType], channel_to_
         dac_index = result.channel_to_dac_index[channel]
         port_type = constant.port_type[port_index]
         LO_freq = constant.LO_freq_resonator if port_type=="ReadOut" else constant.LO_freq_qubit
-        LO_sideband = constant.LO_freq_resonator_sideband if port_type=="ReadOut" else constant.LO_freq_qubit_sideband
+        LO_sideband = constant.LO_sideband_resonator if port_type=="ReadOut" else constant.LO_sideband_qubit
         CNCO_freq = result.CNCO_setting[devname][port_index]
         FNCO_freq = result.FNCO_setting[devname][port_index][dac_index]
         RES_freq = result.channel_to_residual_frequency[channel]

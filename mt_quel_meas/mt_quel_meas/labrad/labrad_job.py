@@ -1,9 +1,19 @@
 from dataclasses import dataclass, field
 from typing import Literal
 import numpy as np
+from tunits.units import ns, us, ms
 from mt_util.tunits_util import FrequencyType, TimeType
-from mt_quel_meas.job import AcquisitionConfig
 
+@dataclass(frozen=True, slots=True)
+class AcquisitionConfigLabrad:
+    num_shot: int
+    waveform_length: TimeType
+    repetition_time: TimeType
+    acquisition_timeout: TimeType
+    acquisition_synchronization_delay: TimeType
+    acquisition_duration: TimeType
+    flag_average_waveform: bool
+    flag_average_shots: bool
 
 @dataclass(frozen=True, slots=True)
 class PhysicalUnitIdentifier:
@@ -13,7 +23,7 @@ class PhysicalUnitIdentifier:
 @dataclass(frozen=True, slots=True)
 class JobLabrad:
     # common config
-    acquisition_config: AcquisitionConfig
+    acquisition_config: AcquisitionConfigLabrad
 
     awg_channel_to_dac_unit: dict[str, PhysicalUnitIdentifier]
     awg_channel_to_waveform: dict[str, np.ndarray]

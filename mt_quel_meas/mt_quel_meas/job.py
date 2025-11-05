@@ -8,16 +8,13 @@ from mt_util.tunits_util import FrequencyType, TimeType
 from mt_quel_util.constant import InstrumentConstantQuEL
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=False, slots=True)
 class AcquisitionConfig:
     num_shot: int = 1000
     repetition_margin: TimeType = 100 * us
-
-    waveform_length: TimeType = 128 * 1024 * ns
-    acquisition_duration: TimeType = 1920 * us
+    acquisition_duration: TimeType = 2048 * ns
     acquisition_delay: TimeType = 0 * us
-    acquisition_timeout: TimeType = 5 * 1e6 * us
-    acquisition_synchronization_delay: TimeType = 100 * ms
+    acquisition_timeout: TimeType = 1000 * ms
     flag_average_waveform: bool = False
     flag_average_shots: bool = False
 

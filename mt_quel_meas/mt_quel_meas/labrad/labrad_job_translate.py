@@ -1,4 +1,5 @@
 import numpy as np
+from tunits.units import ns
 from mt_util.tunits_util import FrequencyType, TimeType
 from mt_quel_util.mux_assignment import get_multiplex_config, MultiplexingResult
 from mt_quel_util.demux_filter import get_gaussian_FIR_coefficients
@@ -6,7 +7,7 @@ from mt_quel_util.mod_demod import modulate_waveform, modulate_averaging_window
 from mt_quel_util.acq_window_shift import adjust_acquisition_window_position, adjust_averaging_window
 from mt_quel_util.constant import InstrumentConstantQuEL
 from mt_quel_meas.job import Job, TranslationInfo
-from mt_quel_meas.labrad.labrad_job import JobLabrad, PhysicalUnitIdentifier
+from mt_quel_meas.labrad.labrad_job import JobLabrad, PhysicalUnitIdentifier, AcquisitionConfigLabrad
 
 
 def _box_port_name(device_name: str, port_index: int) -> str:
@@ -89,13 +90,45 @@ def _get_awg_channel_to_FNCO_frequency(mux_result: MultiplexingResult) -> dict[s
                 awg_channel_to_FNCO_frequency[awg_channel] = freq
     return awg_channel_to_FNCO_frequency
 
-def _get_boxport_to_FNCO_frequency(mux_result: MultiplexingResult) -> dict[str, FrequencyType]:
+def _get_boxport_to_CNCO_frequency(mux_result: MultiplexingResult) -> dict[str, FrequencyType]:
     boxport_to_CNCO_frequency: dict[str, FrequencyType] = {}
     for device in mux_result.CNCO_setting:
         for port_index in mux_result.CNCO_setting[device]:
             boxport = _box_port_name(device, port_index)
             boxport_to_CNCO_frequency[boxport] = mux_result.CNCO_setting[device][port_index]
     return boxport_to_CNCO_frequency
+
+def _get_boxport_to_LO_frequency(mux_result: MultiplexingResult, translate: TranslationInfo) -> dict[str, FrequencyType]:
+    boxport_to_LO_frequency: dict[str, FrequencyType] = {}
+    for device in mux_result.CNCO_setting:
+        for port_index in mux_result.CNCO_setting[device]:
+            boxport = _box_port_name(device, port_index)
+            # TODO: check with port index
+            if "readout" in boxport:
+                boxport_to_LO_frequency[boxport] = translate.instrument_const.LO_freq_resonator
+            elif "control" in boxport:
+                boxport_to_LO_frequency[boxport] = translate.instrument_const.LO_freq_qubit
+            elif "pump" in boxport:
+                boxport_to_LO_frequency[boxport] = translate.instrument_const.LO_freq_jpa
+            else:
+                raise ValueError(f"Unknown boxport type: {boxport}")
+    return boxport_to_LO_frequency
+
+def _get_boxport_to_LO_sideband(mux_result: MultiplexingResult, translate: TranslationInfo) -> dict[str, str]:
+    boxport_to_LO_sideband: dict[str, FrequencyType] = {}
+    for device in mux_result.CNCO_setting:
+        for port_index in mux_result.CNCO_setting[device]:
+            boxport = _box_port_name(device, port_index)
+            # TODO: check with port index
+            if "readout" in boxport:
+                boxport_to_LO_sideband[boxport] = translate.instrument_const.LO_sideband_resonator
+            elif "control" in boxport:
+                boxport_to_LO_sideband[boxport] = translate.instrument_const.LO_sideband_qubit
+            elif "pump" in boxport:
+                boxport_to_LO_sideband[boxport] = translate.instrument_const.LO_sideband_jpa
+            else:
+                raise ValueError(f"Unknown boxport type: {boxport}")
+    return boxport_to_LO_sideband
 
 
 def _map_sequence_channel_to_capture_channel(translate: TranslationInfo, mux_result:MultiplexingResult, sequence_channel_to_mux_index: dict[str, int]) -> dict[str, str]:
@@ -184,10 +217,26 @@ def _get_capture_channel_to_averaging_window_coefficients(
 
 def translate_job_labrad(job: Job, translate: TranslationInfo) -> JobLabrad:
     # create waveform and capture points
-    waveform_duration_ns = job.sequence.get_duration(job.sequence_config, job.acquisition_config.acquisition_duration["ns"])
-    delta_time_ns = (1/translate.instrument_const.DACBB_sampling_freq)["ns"]
-    time_slots = np.arange(np.ceil(waveform_duration_ns/delta_time_ns)) * delta_time_ns
-    sequence_channel_to_waveform, sequence_channel_to_capture_points = job.sequence.get_waveform(time_slots, job.sequence_config)
+    ## get waveform
+    waveform_duration = job.sequence.get_duration(job.sequence_config, job.acquisition_config.acquisition_duration["ns"]) * ns
+
+    ## adjust length
+    waveform_length_step = translate.instrument_const.waveform_length_step
+    waveform_length = np.ceil(waveform_duration/waveform_length_step) * waveform_length_step
+    waveform_length_maximum = translate.instrument_const.waveform_length_maximum
+    if waveform_length > waveform_length_maximum:
+        raise ValueError(f"waveform is too long: provided {waveform_duration} but maximum: {waveform_length_maximum}")
+    
+    ## adjust repetition time
+    repetition_time_step = translate.instrument_const.repetition_time_step
+    repetition_time = waveform_length + job.acquisition_config.repetition_margin
+    repetition_time = np.ceil(repetition_time/repetition_time_step)*repetition_time_step
+
+    ## create timeslots
+    delta_time = (1/translate.instrument_const.DACBB_sampling_freq)
+    num_sample_waveform = np.ceil(waveform_length/delta_time).astype(int)
+    time_slots_ns = np.arange(num_sample_waveform) * delta_time["ns"]
+    sequence_channel_to_waveform, sequence_channel_to_capture_points = job.sequence.get_waveform(time_slots_ns, job.sequence_config)
 
     # TODO: modify sequence_channel_to_frequency to make CR frequency refer to qubit frequency
     mux_result = get_multiplex_config(job.sequence_channel_to_frequency, translate.sequence_channel_to_device, translate.sequence_channel_to_port_index, translate.instrument_const)
@@ -201,7 +250,7 @@ def translate_job_labrad(job: Job, translate: TranslationInfo) -> JobLabrad:
 
     # create DAC -> Waveform
     awg_channel_to_waveform = _get_awg_channel_to_waveform(
-        time_slots,
+        time_slots_ns,
         awg_channel_list,
         sequence_channel_to_awg_channel,
         sequence_channel_to_waveform,
@@ -213,8 +262,11 @@ def translate_job_labrad(job: Job, translate: TranslationInfo) -> JobLabrad:
     awg_channel_to_FNCO_frequency = _get_awg_channel_to_FNCO_frequency(mux_result)
 
     # create BoxPort -> CNCO
-    boxport_to_CNCO_frequency = _get_boxport_to_FNCO_frequency(mux_result)
+    boxport_to_CNCO_frequency = _get_boxport_to_CNCO_frequency(mux_result)
 
+    boxport_to_LO_frequency = _get_boxport_to_LO_frequency(mux_result, translate)
+
+    boxport_to_LO_sideband = _get_boxport_to_LO_sideband(mux_result, translate)
 
 
     # map Sequence -> ADC
@@ -232,6 +284,19 @@ def translate_job_labrad(job: Job, translate: TranslationInfo) -> JobLabrad:
         sequence_channel_to_capture_channel,
         sequence_channel_to_capture_points,
         translate.instrument_const,)
+    
+    # check capture duration
+    duration = job.acquisition_config.acquisition_duration
+    duration_max = translate.instrument_const.ACQ_window_length_max
+    duration_min = translate.instrument_const.ACQ_window_length_min
+    duration_step = translate.instrument_const.ACQ_window_length_step
+    if duration > duration_max:
+        raise ValueError(f"acquisition duration is too long: obtained: {duration}, max: {duration_max}")
+    if duration < duration_min:
+        raise ValueError(f"acquisition duration is too short: obtained: {duration}, min: {duration_min}")
+    duration_res = duration["ns"] % duration_step["ns"]
+    if duration_res >= 0.5:
+        raise ValueError(f"acquisition duration must be mutiple of {duration_step}: obtained: {duration}")
 
     # create ADC -> FIR coefficients
     capture_channel_to_FIR_coefficients = _get_capture_channel_to_FIR_coefficients(
@@ -249,17 +314,26 @@ def translate_job_labrad(job: Job, translate: TranslationInfo) -> JobLabrad:
         capture_channel_to_preceding_time,
         translate.instrument_const,)
     
-
+    acquisition_config_labrad = AcquisitionConfigLabrad(
+        num_shot = job.acquisition_config.num_shot,
+        repetition_time = repetition_time,
+        waveform_length = waveform_length,
+        acquisition_timeout = job.acquisition_config.acquisition_timeout,
+        acquisition_synchronization_delay = translate.instrument_const.synchronization_delay,
+        acquisition_duration = job.acquisition_config.acquisition_duration,
+        flag_average_waveform = job.acquisition_config.flag_average_waveform,
+        flag_average_shots = job.acquisition_config.flag_average_shots,
+    )
 
     job_labrad = JobLabrad(
-        acquisition_config=job.acquisition_config,
+        acquisition_config=acquisition_config_labrad,
         awg_channel_to_dac_unit = awg_channel_to_dac_unit,
         awg_channel_to_waveform = awg_channel_to_waveform,
         awg_channel_to_FNCO_frequency = awg_channel_to_FNCO_frequency,
 
         boxport_to_CNCO_frequency = boxport_to_CNCO_frequency,
-        boxport_to_LO_frequency = {},
-        boxport_to_LO_sideband = {},
+        boxport_to_LO_frequency = boxport_to_LO_frequency,
+        boxport_to_LO_sideband = boxport_to_LO_sideband,
 
         capture_channel_to_adc_unit = capture_channel_to_adc_unit,
         capture_channel_to_capture_point = capture_channel_to_capture_points,

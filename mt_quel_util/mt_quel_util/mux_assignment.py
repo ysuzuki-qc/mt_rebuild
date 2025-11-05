@@ -55,13 +55,13 @@ def get_multiplex_config(channel_to_frequency: dict[str, FrequencyType], channel
         num_dac_channel = constant.num_dac_channel[port_index]
         if port_type == "ReadOut":
             LO_freq = constant.LO_freq_resonator
-            LO_sideband = constant.LO_freq_resonator_sideband
+            LO_sideband = constant.LO_sideband_resonator
         elif port_type == "Control":
             LO_freq = constant.LO_freq_qubit
-            LO_sideband = constant.LO_freq_qubit_sideband
+            LO_sideband = constant.LO_sideband_qubit
         elif port_type == "Pump":
             LO_freq = constant.LO_freq_jpa
-            LO_sideband = constant.LO_freq_jpa_sideband
+            LO_sideband = constant.LO_sideband_jpa
         else:
             raise ValueError(f"port type {port_type} is not supported")
         if LO_sideband == "Direct" and (LO_freq != 0*GHz):
