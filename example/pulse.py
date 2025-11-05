@@ -1,3 +1,8 @@
+import sys
+path_list = ["./mt_circuit/", "./mt_note/", "./mt_pulse/" , "./mt_util/", "./mt_quel_util/", "./mt_quel_meas/"]
+for path in path_list:
+    sys.path.append(path)
+    sys.path.append("../"+path)
 
 def func1():
     # Create preset shape

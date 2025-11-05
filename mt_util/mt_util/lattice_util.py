@@ -2,7 +2,7 @@
 import math
 
 class QubitLattice:
-    def __init__(self, num_qubit: int, target_index_list: list[int] | None) -> None:
+    def __init__(self, num_qubit: int, target_index_list: list[int] | None = None) -> None:
         self.num_qubit = num_qubit
         self.chip_width = self.get_chip_width(num_qubit)
         self.target_index_list: list[int] = []

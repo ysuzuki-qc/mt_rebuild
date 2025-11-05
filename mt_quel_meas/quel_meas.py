@@ -112,7 +112,7 @@ def example2():
     pprint.pprint(job_labrad.capture_channel_to_preceding_time)
     pprint.pprint(job_labrad.capture_channel_to_FIR_coefficients)
     pprint.pprint(job_labrad.capture_channel_to_averaging_window_coefficients.keys())
-    # executor = JobExecutorLabrad("localhost", 7777)
+    executor = JobExecutorLabrad()
     # result_labrad = executor.do_measurement(job_labrad)
     # result = extract_job_result(job, job_labrad, translate, result_labrad)
 

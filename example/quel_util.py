@@ -1,3 +1,10 @@
+import sys
+path_list = ["./mt_circuit/", "./mt_note/", "./mt_pulse/" , "./mt_util/", "./mt_quel_util/", "./mt_quel_meas/"]
+for path in path_list:
+    sys.path.append(path)
+    sys.path.append("../"+path)
+
+
 import numpy as np
 from tunits.units import MHz, GHz
 from mt_quel_util.mux_assignment import get_multiplex_config
