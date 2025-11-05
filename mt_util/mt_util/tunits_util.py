@@ -6,7 +6,7 @@ import json
 # create validator for tunits frequency
 def _serialize_typedunits(v: Value):
     return {"value": v.value, "units": v.units}
-def _validate_frequency_type(v: Any) -> Frequency:
+def _validate_frequency_type(v: Any) -> Value:
     if not isinstance(v, Value):
         raise ValueError(f"{v} is not tunits value")
     try:
@@ -15,7 +15,7 @@ def _validate_frequency_type(v: Any) -> Frequency:
         raise e
     return v
 FrequencyType = Annotated[Frequency, PlainValidator(_validate_frequency_type), PlainSerializer(_serialize_typedunits)]
-def _validate_time_type(v: Any) -> Frequency:
+def _validate_time_type(v: Any) -> Value:
     if not isinstance(v, Value):
         raise ValueError(f"{v} is not tunits value")
     try:

@@ -118,16 +118,17 @@ class Sequence:
         self._command_list.append(seq_command)
 
     def _get_group_key_from_command(self, command: SequenceCommand) -> tuple[str,...]:
+        channel_list: list[str] = []
         if command.name in [_SYNC_COMMAND_, _CAPT_COMMAND_]:
-            channel_list: list[str] = command.channel_list
+            channel_list.extend(command.channel_list)
         else:
-            channel_list: list[str] = list(command.pulse_channel_to_sequence_channel.values())
+            channel_list.extend(list(command.pulse_channel_to_sequence_channel.values()))
         group_list = [self._channel_to_group[channel] for channel in channel_list]
         group_key = tuple(sorted(list(set(group_list))))
         return group_key
 
     def get_config(self) -> SequenceConfig:
-        config_dict: dict[tuple[str,...], dict[str, float]] = {}
+        config_dict: dict[tuple[str,...], dict[str, dict[str, float]]] = {}
         for command in self._command_list:
             if command.name in [_SYNC_COMMAND_, _CAPT_COMMAND_]:
                 continue

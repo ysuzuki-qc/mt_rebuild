@@ -66,9 +66,6 @@ def example1():
     pprint.pprint(job_labrad.capture_channel_to_preceding_time)
     pprint.pprint(job_labrad.capture_channel_to_FIR_coefficients)
     pprint.pprint(job_labrad.capture_channel_to_averaging_window_coefficients.keys())
-    # executor = JobExecutorLabrad("localhost", 7777)
-    # result_labrad = executor.do_measurement(job_labrad)
-    # result = extract_job_result(job, job_labrad, translate, result_labrad)
 
 
 def example2():
@@ -81,39 +78,25 @@ def example2():
     from mt_quel_meas.labrad.labrad_job_execute import JobExecutorLabrad
     from mt_quel_meas.labrad.labrad_job_extract import extract_job_result
     from mt_quel_util.constant import CONST_QuEL1SE_LOW_FREQ
-    target_qubit_list = [0,1]
+    target_qubit_list = [0]
     num_qubit = 16
     sequence,  channel_to_frequency, channel_to_frequency_shift, channel_to_averaging_window, translate = create_2Q_objects(num_qubit, target_qubit_list, wiring_dict_16Q, CONST_QuEL1SE_LOW_FREQ)
-    print(sequence._channel_list)
-    channel_to_frequency["Q0_qubit"] = 4*GHz
-    channel_to_frequency["Q1_qubit"] = 4.2*GHz
-    print(channel_to_frequency)
 
+    channel_to_frequency["Q0_qubit"] = 4.0*GHz
+    channel_to_frequency["Q0_resonator"] = 6.1*GHz
     sequence.add_blank_command(["Q0_qubit"], 100)
     sequence.add_pulse("FLATTOP", {"channel": "Q0_qubit"})
-    sequence.add_pulse("FLATTOP", {"channel": "Q0_CR_R"})
     sequence.add_synchronize_all_command()
-    sequence.add_capture_command(["Q0_resonator", "Q1_resonator"])
+    sequence.add_capture_command(["Q0_resonator"])
     sequence.add_pulse("MEAS", {"resonator": "Q0_resonator"})
-    sequence.add_pulse("MEAS", {"resonator": "Q1_resonator"})
     sequence_config = sequence.get_config()
     acquisition_config = AcquisitionConfig()
     job = Job(sequence, sequence_config,  channel_to_frequency, channel_to_frequency_shift, channel_to_averaging_window, acquisition_config)
 
     # convert job to labrad form, execute it, and convert results
     job_labrad = translate_job_labrad(job, translate)
-    pprint.pprint(job_labrad.acquisition_config)
-    pprint.pprint(job_labrad.awg_channel_to_dac_unit)
-    pprint.pprint(job_labrad.awg_channel_to_waveform.keys())
-    pprint.pprint(job_labrad.awg_channel_to_FNCO_frequency)
-    pprint.pprint(job_labrad.boxport_to_CNCO_frequency)
-    pprint.pprint(job_labrad.capture_channel_to_adc_unit)
-    pprint.pprint(job_labrad.capture_channel_to_capture_point)
-    pprint.pprint(job_labrad.capture_channel_to_preceding_time)
-    pprint.pprint(job_labrad.capture_channel_to_FIR_coefficients)
-    pprint.pprint(job_labrad.capture_channel_to_averaging_window_coefficients.keys())
     executor = JobExecutorLabrad()
-    # result_labrad = executor.do_measurement(job_labrad)
+    result_labrad = executor.do_measurement(job_labrad)
     # result = extract_job_result(job, job_labrad, translate, result_labrad)
 
 # example1()
