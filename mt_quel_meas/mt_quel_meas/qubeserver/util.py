@@ -8,7 +8,7 @@ _separator_device_port_index_pump = "-pump_"
 def _boxport_name(
     device_name: str, port_index: int, port_type: Literal["Unused", "ReadIn", "ReadOut", "Pump", "Control"]
 ) -> str:
-    if port_type in ["ReadOut", "ReadIn"]:
+    if port_type in ["ReadOut"]:
         return f"{device_name}{_separator_device_port_index_readout}{port_index}"
     elif port_type in ["Pump"]:
         return f"{device_name}{_separator_device_port_index_pump}{port_index}"
@@ -30,6 +30,16 @@ def _boxport_to_device_and_port_index(boxport: str) -> tuple[str, int]:
             port_index = int(port_index_str)
             return device_name, port_index
     raise ValueError(f"cannot convert {boxport} to device and str")
+
+
+def _boxport_to_port_type(boxport: str) -> Literal["Unused", "ReadIn", "ReadOut", "Pump", "Control"]:
+    if _separator_device_port_index_readout in boxport:
+        return "ReadOut"
+    elif _separator_device_port_index_control in boxport:
+        return "Control"
+    elif _separator_device_port_index_pump in boxport:
+        return "Pump"
+    raise ValueError(f"cannot convert {boxport} to port type")
 
 
 _separator_boxport_awg = "-AWG_"

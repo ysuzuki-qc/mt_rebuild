@@ -5,6 +5,8 @@ import numpy as np
 import labrad
 from mt_util.tunits_util import FrequencyType, TimeType
 from mt_quel_meas.qubeserver.job import JobQubeServer, PhysicalUnitIdentifier, AcquisitionConfigQubeServer
+from mt_quel_meas.qubeserver.util import _boxport_to_port_type
+
 
 logger = getLogger(__name__)
 
@@ -77,8 +79,8 @@ class JobExecutorQubeServer:
                 logger.info(f"job execute | set CNCO-tx frequency | ch: {box_port}, v: {frequency}")
             else:
                 logger.info(f"job execute | set CNCO-tx frequency | ch: {box_port}, v: {frequency} skipped")
-            # TODO: check with port index
-            if "readout" in box_port:
+            port_type = _boxport_to_port_type(box_port)
+            if port_type == "ReadOut":
                 freq_device = self._qube.frequency_rx_nco()
                 if (freq_device["Hz"] - frequency["Hz"]) > 1:
                     self._qube.frequency_rx_nco(frequency["MHz"] * labrad.units.MHz)
