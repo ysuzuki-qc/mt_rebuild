@@ -11,7 +11,7 @@ def BLANK() -> Pulse:
 
 def FLATTOP() -> Pulse:
     pulse = Pulse(name="FLATTOP", channel_list=["channel"])
-    w = pulse.add_variable("flattop_margin", default_value=100, description="margine before and after sequence")
+    w = pulse.add_variable("flattop_width", default_value=100, description="width of flattop pulse")
     a = pulse.add_variable("flattop_amplitude", default_value=0.9, description="amplitude of flattop pulse")
     p = pulse.add_variable("flattop_phase", default_value=0, description="phase of flattop pulse")
     pulse.add_shape(channel_name="channel", shape_name="flattop", shape_param={"width": w, "amplitude": a, "phase": p})

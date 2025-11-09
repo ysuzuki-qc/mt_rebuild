@@ -1,3 +1,4 @@
+from logging import getLogger
 from typing import Literal
 import numpy as np
 from tunits.units import ns
@@ -5,25 +6,14 @@ from mt_util.tunits_util import FrequencyType, TimeType
 from mt_quel_util.mux_assignment import get_multiplex_config, MultiplexingResult
 from mt_quel_util.demux_filter import get_gaussian_FIR_coefficients
 from mt_quel_util.mod_demod import modulate_waveform, modulate_averaging_window
-from mt_quel_util.acq_window_shift import adjust_acquisition_window_position, adjust_averaging_window
+from mt_quel_util.acq_window_shift import adjust_capture_point_list, adjust_averaging_window
 from mt_quel_util.constant import InstrumentConstantQuEL
 from mt_quel_meas.job import Job, TranslationInfo
 from mt_quel_meas.qubeserver.job import JobQubeServer, PhysicalUnitIdentifier, AcquisitionConfigQubeServer
+from mt_quel_meas.qubeserver.util import _awg_channel_name, _capture_channel_name, _boxport_name, _awg_channel_to_boxport, _capture_channel_to_boxport
 
+logger = getLogger(__name__)
 
-def _box_port_name(device_name: str, port_index: int) -> str:
-    if port_index in [0,1]:
-        return f"{device_name}-readout_{port_index}"
-    elif port_index in [6,7,8,9]:
-        return f"{device_name}-control_{port_index}"
-    else:
-        raise ValueError(f"Unexpected qube device specified: {device_name, port_index}")
-
-def _awg_channel_name(device_name: str, port_index: int, awg_channel: int) -> str:
-    return f"{_box_port_name(device_name,port_index)}-AWG_{awg_channel}"
-
-def _capture_channel_name(device_name: str, port_index: int, capture_channel: int) -> str:
-    return f"{_box_port_name(device_name,port_index)}-Capture_{capture_channel}"
 
 def _map_sequence_channel_to_awg_channel(translate: TranslationInfo, mux_result: MultiplexingResult) -> dict[str, str]:
     sequence_channel_to_awg_channel: dict[str, str] = {}
@@ -31,7 +21,7 @@ def _map_sequence_channel_to_awg_channel(translate: TranslationInfo, mux_result:
         device = translate.sequence_channel_to_device[sequence_channel]
         port_index = translate.sequence_channel_to_port_index[sequence_channel]
         dac_index = mux_result.channel_to_dac_index[sequence_channel]
-        awg_channel = _awg_channel_name(device, port_index, dac_index)
+        awg_channel = _awg_channel_name(device, port_index, translate.instrument_const.port_type[port_index], dac_index)
         sequence_channel_to_awg_channel[sequence_channel] = awg_channel
     return sequence_channel_to_awg_channel
 
@@ -41,9 +31,9 @@ def _get_awg_channel_to_dac_unit(translate: TranslationInfo, mux_result: Multipl
         device = translate.sequence_channel_to_device[sequence_channel]
         port_index = translate.sequence_channel_to_port_index[sequence_channel]
         dac_index = mux_result.channel_to_dac_index[sequence_channel]
-        awg_channel = _awg_channel_name(device, port_index, dac_index)
+        awg_channel = _awg_channel_name(device, port_index, translate.instrument_const.port_type[port_index], dac_index)
         if awg_channel not in awg_channel_to_dac_unit:
-            box_port = _box_port_name(device, port_index)
+            box_port = _boxport_name(device, port_index, translate.instrument_const.port_type[port_index])
             awg_channel_to_dac_unit[awg_channel] = PhysicalUnitIdentifier(box_port, dac_index)
     return awg_channel_to_dac_unit
 
@@ -61,8 +51,8 @@ def _get_awg_channel_to_waveform(time_slots: np.ndarray,
                                       awg_channel_list: list[str],
                                       sequence_channel_to_awg_channel: dict[str, str],
                                       sequence_channel_to_waveform: dict[str, np.ndarray], 
-                                      sequence_channel_to_frequency_shift: dict[str, FrequencyType],
-                                      sequence_channel_to_residual_frequency: dict[str, FrequencyType],
+                                      sequence_channel_to_frequency_modulation: dict[str, FrequencyType],
+                                      boxport_to_LO_sideband: dict[str, Literal["USB", "LSB", "Direct"]],
                                       constant: InstrumentConstantQuEL):
 
     # create zero waveform
@@ -74,28 +64,33 @@ def _get_awg_channel_to_waveform(time_slots: np.ndarray,
     for sequence_channel, awg_channel in sequence_channel_to_awg_channel.items():
         waveform = sequence_channel_to_waveform[sequence_channel]
 
-        freq_residual = sequence_channel_to_residual_frequency[sequence_channel]
-        freq_shift = sequence_channel_to_frequency_shift[sequence_channel]
-        freq_modulate =  freq_residual + freq_shift
+        freq_modulate =  sequence_channel_to_frequency_modulation[sequence_channel]
         modulated_waveform = modulate_waveform(waveform, freq_modulate, constant)
-
         awg_channel_to_waveform[awg_channel] += modulated_waveform
+        logger.info(f"job extract | modulate waveform | v: {freq_modulate} seq-ch: {sequence_channel} - awg-ch: {awg_channel}")
+
+    # take adjoint if signal is used as LSB
+    for awg_channel in awg_channel_to_waveform:
+        boxport = _awg_channel_to_boxport(awg_channel)
+        if boxport_to_LO_sideband[boxport] == "LSB":
+            np.conj(awg_channel_to_waveform[awg_channel], out=awg_channel_to_waveform[awg_channel])
+
     return awg_channel_to_waveform
 
-def _get_awg_channel_to_FNCO_frequency(mux_result: MultiplexingResult) -> dict[str, FrequencyType]:
+def _get_awg_channel_to_FNCO_frequency(mux_result: MultiplexingResult, translate: TranslationInfo) -> dict[str, FrequencyType]:
     awg_channel_to_FNCO_frequency: dict[str, FrequencyType] = {}
     for device, FNCO_port in mux_result.FNCO_setting.items():
         for port_index, FNCO_dac in FNCO_port.items():
             for dac_index, freq in FNCO_dac.items():
-                awg_channel = _awg_channel_name(device, port_index, dac_index)
+                awg_channel = _awg_channel_name(device, port_index, translate.instrument_const.port_type[port_index], dac_index)
                 awg_channel_to_FNCO_frequency[awg_channel] = freq
     return awg_channel_to_FNCO_frequency
 
-def _get_boxport_to_CNCO_frequency(mux_result: MultiplexingResult) -> dict[str, FrequencyType]:
+def _get_boxport_to_CNCO_frequency(mux_result: MultiplexingResult, translate: TranslationInfo) -> dict[str, FrequencyType]:
     boxport_to_CNCO_frequency: dict[str, FrequencyType] = {}
     for device in mux_result.CNCO_setting:
         for port_index in mux_result.CNCO_setting[device]:
-            boxport = _box_port_name(device, port_index)
+            boxport = _boxport_name(device, port_index, translate.instrument_const.port_type[port_index])
             boxport_to_CNCO_frequency[boxport] = mux_result.CNCO_setting[device][port_index]
     return boxport_to_CNCO_frequency
 
@@ -103,7 +98,7 @@ def _get_boxport_to_LO_frequency(mux_result: MultiplexingResult, translate: Tran
     boxport_to_LO_frequency: dict[str, FrequencyType] = {}
     for device in mux_result.CNCO_setting:
         for port_index in mux_result.CNCO_setting[device]:
-            boxport = _box_port_name(device, port_index)
+            boxport = _boxport_name(device, port_index, translate.instrument_const.port_type[port_index])
             port_type = translate.instrument_const.port_type[port_index]
             if port_type == "ReadOut":
                 boxport_to_LO_frequency[boxport] = translate.instrument_const.LO_freq_resonator
@@ -119,7 +114,7 @@ def _get_boxport_to_LO_sideband(mux_result: MultiplexingResult, translate: Trans
     boxport_to_LO_sideband: dict[str, Literal["USB", "LSB", "Direct"]] = {}
     for device in mux_result.CNCO_setting:
         for port_index in mux_result.CNCO_setting[device]:
-            boxport = _box_port_name(device, port_index)
+            boxport = _boxport_name(device, port_index, translate.instrument_const.port_type[port_index])
             port_type = translate.instrument_const.port_type[port_index]
             if port_type == "ReadOut":
                 boxport_to_LO_sideband[boxport] = translate.instrument_const.LO_sideband_resonator
@@ -144,7 +139,7 @@ def _map_sequence_channel_to_capture_channel(translate: TranslationInfo, mux_res
 
         device = translate.sequence_channel_to_device[sequence_channel]
         mux_index = sequence_channel_to_mux_index[sequence_channel]
-        capture_channel = _capture_channel_name(device, port_index, mux_index)
+        capture_channel = _capture_channel_name(device, port_index, translate.instrument_const.port_type[port_index], mux_index)
         sequence_channel_to_capture_channel[sequence_channel] = capture_channel
     return sequence_channel_to_capture_channel
 
@@ -157,28 +152,30 @@ def _get_capture_channel_to_adc_unit(translate: TranslationInfo, sequence_channe
         device = translate.sequence_channel_to_device[sequence_channel]
         port_index = translate.sequence_channel_to_port_index[sequence_channel]
         mux_index = sequence_channel_to_mux_index[sequence_channel]
-        capture_channel = _capture_channel_name(device, port_index, mux_index)
+        capture_channel = _capture_channel_name(device, port_index, translate.instrument_const.port_type[port_index], mux_index)
         assert(capture_channel not in capture_channel_to_adc_unit)
-        box_port = _box_port_name(device, port_index)
+        box_port = _boxport_name(device, port_index, translate.instrument_const.port_type[port_index])
         capture_channel_to_adc_unit[capture_channel] = PhysicalUnitIdentifier(box_port, mux_index)
     return capture_channel_to_adc_unit
 
 
-def _get_capture_channel_to_capture_points_and_preceding_time(
+def _get_capture_channel_to_capture_point_list_and_preceding_time(
         sequence_channel_to_capture_channel: dict[str, str],
-        sequence_channel_to_capture_points: dict[str, list[TimeType]],
+        sequence_channel_to_capture_point_list: dict[str, list[TimeType]],
+        acquisition_delay: TimeType,
         instrument_const: InstrumentConstantQuEL) -> tuple[dict[str, list[TimeType]], dict[str, TimeType]]:
 
-    capture_channel_to_capture_points: dict[str, list[TimeType]] = {}
+    capture_channel_to_capture_point_list: dict[str, list[TimeType]] = {}
     capture_channel_to_preceding_time: dict[str, TimeType] = {}
 
     for sequence_channel, capture_channel in sequence_channel_to_capture_channel.items():
-        capture_points = sequence_channel_to_capture_points[sequence_channel]
-        adjusted_capture_points, preceding_time = adjust_acquisition_window_position(capture_points, instrument_const)
-        assert(capture_channel not in capture_channel_to_capture_points)
-        capture_channel_to_capture_points[capture_channel] = adjusted_capture_points
+        capture_point_list = sequence_channel_to_capture_point_list[sequence_channel]
+        delayed_capture_point_list = [capture_point + acquisition_delay for capture_point in capture_point_list]
+        delayed_adjusted_capture_point_list, preceding_time = adjust_capture_point_list(delayed_capture_point_list, instrument_const)
+        capture_channel_to_capture_point_list[capture_channel] = delayed_adjusted_capture_point_list
         capture_channel_to_preceding_time[capture_channel] = preceding_time
-    return capture_channel_to_capture_points, capture_channel_to_preceding_time
+        logger.info(f"job extract | adjust capture point | org: {capture_point_list} adj: {delayed_adjusted_capture_point_list} (precede: {preceding_time}) delay: {acquisition_delay} seq-ch: {sequence_channel} - cap-ch: {capture_channel}")
+    return capture_channel_to_capture_point_list, capture_channel_to_preceding_time
 
 
 def _get_capture_channel_to_FIR_coefficients(
@@ -195,27 +192,34 @@ def _get_capture_channel_to_FIR_coefficients(
 
         FIR_coefficients = get_gaussian_FIR_coefficients(freq_modulate, constant)
         capture_channel_to_FIR_coefficients[capture_channel] = FIR_coefficients
+        logger.info(f"job extract | modulate FIR coeffs | v: {freq_modulate} (residual: {freq_residual}, shift: {freq_shift}) seq-ch: {sequence_channel} awg-ch: {capture_channel}")
     return capture_channel_to_FIR_coefficients
 
 def _get_capture_channel_to_averaging_window_coefficients(
         sequence_channel_to_capture_channel: dict[str, str],
         sequence_channel_to_averaging_window_coefficients: dict[str, np.ndarray],
-        sequence_channel_to_frequency_shift: dict[str, FrequencyType],
-        sequence_channel_to_residual_frequency: dict[str, FrequencyType],
+        sequence_channel_to_frequency_modulation: dict[str, FrequencyType],
         capture_channel_to_preceding_time: dict[str, TimeType],
+        boxport_to_LO_sideband: dict[str, Literal["USB", "LSB", "Direct"]],
         constant: InstrumentConstantQuEL) -> dict[str, np.ndarray]:
 
     capture_channel_to_averaging_window_coefficients: dict[str, np.ndarray] = {}
     for sequence_channel, capture_channel in sequence_channel_to_capture_channel.items():
-        freq_residual = sequence_channel_to_residual_frequency[sequence_channel]
-        freq_shift = sequence_channel_to_frequency_shift[sequence_channel]
-        freq_modulate =  freq_residual + freq_shift
+        freq_modulate = sequence_channel_to_frequency_modulation[sequence_channel]
 
         averaging_window_coefficients = sequence_channel_to_averaging_window_coefficients[sequence_channel]
         preceding_time = capture_channel_to_preceding_time[capture_channel]
         adjusted_averaging_window_coefficients = adjust_averaging_window(averaging_window_coefficients, preceding_time, constant)
         adjusted_modulated_averaging_window_coefficients = modulate_averaging_window(adjusted_averaging_window_coefficients, freq_modulate, constant)
+
+        boxport = _capture_channel_to_boxport(capture_channel)
+        sideband = boxport_to_LO_sideband[boxport]
+        if sideband == "LSB":
+            np.conj(adjusted_modulated_averaging_window_coefficients, out = adjusted_modulated_averaging_window_coefficients)
+
         capture_channel_to_averaging_window_coefficients[capture_channel] = adjusted_modulated_averaging_window_coefficients
+        logger.info(f"job extract | adjust averaging window | precede: {preceding_time} seq-ch: {sequence_channel} - cap-ch: {capture_channel}")
+        logger.info(f"job extract | modulate averaging window | v: {freq_modulate}  seq-ch: {sequence_channel} - cap-ch: {capture_channel}")
     return capture_channel_to_averaging_window_coefficients
 
 def translate_job_qube_server(job: Job, translate: TranslationInfo) -> JobQubeServer:
@@ -239,15 +243,32 @@ def translate_job_qube_server(job: Job, translate: TranslationInfo) -> JobQubeSe
     delta_time = (1/translate.instrument_const.DACBB_sampling_freq)
     num_sample_waveform = np.ceil(waveform_length/delta_time).astype(int)
     time_slots_ns = np.arange(num_sample_waveform) * delta_time["ns"]
-    sequence_channel_to_waveform, sequence_channel_to_capture_points_ns = job.sequence.get_waveform(time_slots_ns, job.sequence_config)
+    sequence_channel_to_waveform, sequence_channel_to_capture_point_list_ns = job.sequence.get_waveform(time_slots_ns, job.sequence_config)
 
     # convert float values to TimeType items
-    sequence_channel_to_capture_points: dict[str, list[TimeType]] = {}
-    for sequence_channel, capture_points_ns in sequence_channel_to_capture_points_ns.items():
-        sequence_channel_to_capture_points[sequence_channel] = [capture_point_ns*ns for capture_point_ns in capture_points_ns]
+    sequence_channel_to_capture_point_list: dict[str, list[TimeType]] = {}
+    for sequence_channel, capture_point_list_ns in sequence_channel_to_capture_point_list_ns.items():
+        sequence_channel_to_capture_point_list[sequence_channel] = [capture_point_ns*ns for capture_point_ns in capture_point_list_ns]
 
     # TODO: modify sequence_channel_to_frequency to make CR frequency refer to qubit frequency
     mux_result = get_multiplex_config(job.sequence_channel_to_frequency, translate.sequence_channel_to_device, translate.sequence_channel_to_port_index, translate.instrument_const)
+
+    sequence_channel_to_frequency_modulation: dict[str, FrequencyType] = {}
+    for sequence_channel in translate.sequence_channel_to_device:
+        freq_shift = job.sequence_channel_to_frequency_shift[sequence_channel]
+        freq_residual = mux_result.channel_to_residual_frequency[sequence_channel]
+        freq_modulate = freq_shift + freq_residual
+        sequence_channel_to_frequency_modulation[sequence_channel] = freq_modulate
+
+    # create BoxPort -> CNCO frequency
+    boxport_to_CNCO_frequency = _get_boxport_to_CNCO_frequency(mux_result, translate)
+
+    # create BoxPort -> LO frequency
+    boxport_to_LO_frequency = _get_boxport_to_LO_frequency(mux_result, translate)
+
+    # create BoxPort -> LO sideband
+    boxport_to_LO_sideband = _get_boxport_to_LO_sideband(mux_result, translate)
+
 
     # map Sequence -> DAC
     sequence_channel_to_awg_channel = _map_sequence_channel_to_awg_channel(translate, mux_result)
@@ -262,22 +283,12 @@ def translate_job_qube_server(job: Job, translate: TranslationInfo) -> JobQubeSe
         awg_channel_list,
         sequence_channel_to_awg_channel,
         sequence_channel_to_waveform,
-        job.sequence_channel_to_frequency_shift,
-        mux_result.channel_to_residual_frequency,
+        sequence_channel_to_frequency_modulation,
+        boxport_to_LO_sideband,
         translate.instrument_const)
 
     # create DAC -> FNCO frequency
-    awg_channel_to_FNCO_frequency = _get_awg_channel_to_FNCO_frequency(mux_result)
-
-    # create BoxPort -> CNCO frequency
-    boxport_to_CNCO_frequency = _get_boxport_to_CNCO_frequency(mux_result)
-
-    # create BoxPort -> LO frequency
-    boxport_to_LO_frequency = _get_boxport_to_LO_frequency(mux_result, translate)
-
-    # create BoxPort -> LO sideband
-    boxport_to_LO_sideband = _get_boxport_to_LO_sideband(mux_result, translate)
-
+    awg_channel_to_FNCO_frequency = _get_awg_channel_to_FNCO_frequency(mux_result, translate)
 
     # map Sequence -> ADC
     sequence_channel_to_mux_index = _get_sequence_channel_to_mux_index(awg_channel_list, sequence_channel_to_awg_channel)
@@ -290,10 +301,11 @@ def translate_job_qube_server(job: Job, translate: TranslationInfo) -> JobQubeSe
         sequence_channel_to_mux_index)
 
     # create ADC -> capture points
-    capture_channel_to_capture_points, capture_channel_to_preceding_time = _get_capture_channel_to_capture_points_and_preceding_time(
+    capture_channel_to_capture_point_list, capture_channel_to_preceding_time = _get_capture_channel_to_capture_point_list_and_preceding_time(
         sequence_channel_to_capture_channel,
-        sequence_channel_to_capture_points,
-        translate.instrument_const,)
+        sequence_channel_to_capture_point_list,
+        job.acquisition_config.acquisition_delay,
+        translate.instrument_const)
     
     # check capture duration
     duration = job.acquisition_config.acquisition_duration
@@ -319,10 +331,10 @@ def translate_job_qube_server(job: Job, translate: TranslationInfo) -> JobQubeSe
     capture_channel_to_averaging_window_coefficients = _get_capture_channel_to_averaging_window_coefficients(
         sequence_channel_to_capture_channel,
         job.sequence_channel_to_averaging_window,
-        job.sequence_channel_to_frequency_shift,
-        mux_result.channel_to_residual_frequency,
+        sequence_channel_to_frequency_modulation,
         capture_channel_to_preceding_time,
-        translate.instrument_const,)
+        boxport_to_LO_sideband,
+        translate.instrument_const)
 
     # create QubeServer job
     acquisition_config_qube_server = AcquisitionConfigQubeServer(
@@ -337,7 +349,11 @@ def translate_job_qube_server(job: Job, translate: TranslationInfo) -> JobQubeSe
     )
 
     job_qube_server = JobQubeServer(
+        sequence_channel_to_awg_channel = sequence_channel_to_awg_channel,
+        sequence_chanenl_to_capture_channel = sequence_channel_to_capture_channel,
+        sequence_channel_to_frequency_modulation = sequence_channel_to_frequency_modulation,
         acquisition_config = acquisition_config_qube_server,
+
         awg_channel_to_dac_unit = awg_channel_to_dac_unit,
         awg_channel_to_waveform = awg_channel_to_waveform,
         awg_channel_to_FNCO_frequency = awg_channel_to_FNCO_frequency,
@@ -347,7 +363,7 @@ def translate_job_qube_server(job: Job, translate: TranslationInfo) -> JobQubeSe
         boxport_to_LO_sideband = boxport_to_LO_sideband,
 
         capture_channel_to_adc_unit = capture_channel_to_adc_unit,
-        capture_channel_to_capture_point = capture_channel_to_capture_points,
+        capture_channel_to_capture_point_list = capture_channel_to_capture_point_list,
         capture_channel_to_preceding_time = capture_channel_to_preceding_time,
         capture_channel_to_FIR_coefficients = capture_channel_to_FIR_coefficients,
         capture_channel_to_averaging_window_coefficients = capture_channel_to_averaging_window_coefficients,
