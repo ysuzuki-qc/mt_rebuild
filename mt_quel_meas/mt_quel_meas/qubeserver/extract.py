@@ -1,9 +1,7 @@
 from logging import getLogger
 import numpy as np
-from mt_util.tunits_util import FrequencyType
 from mt_quel_util.mod_demod import demodulate_waveform, demodulate_averaged_sample
-from mt_quel_util.acq_window_shift import restore_waveform_position
-from mt_quel_meas.job import MeasurementDataset, Job, TranslationInfo
+from mt_quel_meas.job import Job, TranslationInfo
 from mt_quel_meas.qubeserver.job import JobQubeServer
 from mt_quel_meas.qubeserver.util import _capture_channel_to_boxport
 
@@ -20,8 +18,8 @@ def _get_sequence_channel_from_capture_channel(capture_channel: str, sequence_ch
         raise ValueError(f"{capture_channel} is assigned with multiple sequence channels {hit}")
     return hit[0]
 
-def extract_dataset(job: Job, job_qube_server: JobQubeServer, translate: TranslationInfo, dataset: dict[str, np.ndarray]) -> MeasurementDataset:
-    result = {}
+def extract_dataset(job: Job, job_qube_server: JobQubeServer, translate: TranslationInfo, dataset: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+    result: dict[str, np.ndarray] = {}
     for capture_channel, data in dataset.items():
         sequence_channel = _get_sequence_channel_from_capture_channel(capture_channel, job_qube_server.sequence_chanenl_to_capture_channel)
         freq_modulate = job_qube_server.sequence_channel_to_frequency_modulation[sequence_channel]
@@ -103,7 +101,5 @@ def extract_dataset(job: Job, job_qube_server: JobQubeServer, translate: Transla
         else:
             assert(False)
     return result
-    # translate_dataset = MeasurementDataset(shape = [], dataarray = [])
-    # return translate_dataset
 
 

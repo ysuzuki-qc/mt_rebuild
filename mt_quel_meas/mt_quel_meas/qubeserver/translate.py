@@ -170,11 +170,16 @@ def _get_capture_channel_to_capture_point_list_and_preceding_time(
 
     for sequence_channel, capture_channel in sequence_channel_to_capture_channel.items():
         capture_point_list = sequence_channel_to_capture_point_list[sequence_channel]
-        delayed_capture_point_list = [capture_point + acquisition_delay for capture_point in capture_point_list]
-        delayed_adjusted_capture_point_list, preceding_time = adjust_capture_point_list(delayed_capture_point_list, instrument_const)
-        capture_channel_to_capture_point_list[capture_channel] = delayed_adjusted_capture_point_list
-        capture_channel_to_preceding_time[capture_channel] = preceding_time
-        logger.info(f"job extract | adjust capture point | org: {capture_point_list} adj: {delayed_adjusted_capture_point_list} (precede: {preceding_time}) delay: {acquisition_delay} seq-ch: {sequence_channel} - cap-ch: {capture_channel}")
+        if len(capture_point_list) == 0:
+            capture_channel_to_capture_point_list[capture_channel] = []
+            capture_channel_to_preceding_time[capture_channel] = 0*ns
+            logger.info(f"job extract | adjust capture point | no capture point  seq-ch: {sequence_channel} - cap-ch: {capture_channel}")
+        else:
+            delayed_capture_point_list = [capture_point + acquisition_delay for capture_point in capture_point_list]
+            delayed_adjusted_capture_point_list, preceding_time = adjust_capture_point_list(delayed_capture_point_list, instrument_const)
+            capture_channel_to_capture_point_list[capture_channel] = delayed_adjusted_capture_point_list
+            capture_channel_to_preceding_time[capture_channel] = preceding_time
+            logger.info(f"job extract | adjust capture point | org: {capture_point_list} adj: {delayed_adjusted_capture_point_list} (precede: {preceding_time}) delay: {acquisition_delay} seq-ch: {sequence_channel} - cap-ch: {capture_channel}")
     return capture_channel_to_capture_point_list, capture_channel_to_preceding_time
 
 

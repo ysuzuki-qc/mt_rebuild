@@ -33,8 +33,3 @@ class TranslationInfo:
     sequence_channel_to_port_index: dict[str, int]
     wiring_dict: dict[str, dict[str, str]]
     instrument_const: InstrumentConstantQuEL
-
-@dataclass(frozen=True, slots=True)
-class MeasurementDataset:
-    shape: list[int]
-    dataarray: list[complex]

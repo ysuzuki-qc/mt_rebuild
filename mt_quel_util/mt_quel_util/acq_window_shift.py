@@ -34,11 +34,3 @@ def adjust_averaging_window(averaging_window: np.ndarray, preceding_time: TimeTy
     adjusted_averaging_window[num_sample_precede:num_sample_precede+len(averaging_window)] = averaging_window
     return adjusted_averaging_window
 
-def restore_waveform_position(readout_waveform: np.ndarray, preceding_time: TimeType, constant: InstrumentConstantQuEL) -> np.ndarray:
-    if readout_waveform.ndim != 1:
-        raise ValueError("input wavefor must have ndim==1")
-    ADC_decimated_freq = constant.ADC_decimated_freq
-    num_sample_precede = np.rint(preceding_time*ADC_decimated_freq).astype(int)
-    num_sample_window_available = np.rint( (constant.ACQ_window_length_max-constant.ACQ_first_window_position_timestep) * ADC_decimated_freq).astype(int)
-    adjusted_readout_waveform = readout_waveform[num_sample_precede:num_sample_precede+num_sample_window_available]
-    return adjusted_readout_waveform

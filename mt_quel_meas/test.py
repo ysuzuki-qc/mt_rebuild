@@ -562,7 +562,7 @@ def example10():
     from mt_quel_meas.qubeserver.extract import extract_dataset
     from mt_quel_util.constant import CONST_QuEL1SE_LOW_FREQ
     
-    target_qubit_list = [0,1]
+    target_qubit_list = [0,1,2,3]
     num_qubit = 16
     executor = JobExecutorQubeServer()
     sequence,  channel_to_frequency, channel_to_frequency_shift, channel_to_averaging_window, translate = create_2Q_objects(num_qubit, target_qubit_list, wiring_dict_16Q, CONST_QuEL1SE_LOW_FREQ)
@@ -573,6 +573,10 @@ def example10():
     channel_to_frequency["Q0_resonator"] = 6.0*tunits.units.GHz + CONST_QuEL1SE_LOW_FREQ.NCO_step_freq + 0.2*tunits.units.GHz
     channel_to_frequency["Q1_qubit"] = 4.1*tunits.units.GHz
     channel_to_frequency["Q1_resonator"] = 6.0*tunits.units.GHz + CONST_QuEL1SE_LOW_FREQ.NCO_step_freq + 0.3*tunits.units.GHz
+    channel_to_frequency["Q2_qubit"] = 4.2*tunits.units.GHz
+    channel_to_frequency["Q2_resonator"] = 6.0*tunits.units.GHz + CONST_QuEL1SE_LOW_FREQ.NCO_step_freq + 0.4*tunits.units.GHz
+    channel_to_frequency["Q3_qubit"] = 4.3*tunits.units.GHz
+    channel_to_frequency["Q3_resonator"] = 6.0*tunits.units.GHz + CONST_QuEL1SE_LOW_FREQ.NCO_step_freq + 0.35*tunits.units.GHz
 
     # create seqeunce
     sequence.add_blank_command(["Q0_resonator"], 100)
@@ -587,20 +591,20 @@ def example10():
 
     for _ in range(num_window-1):
         sequence.add_blank_command(["Q0_resonator"], 2500)
-        sequence.add_capture_command(["Q0_resonator", "Q1_resonator"])
+        sequence.add_capture_command(["Q0_resonator", "Q1_resonator", "Q2_resonator", "Q3_resonator"])
         sequence.add_pulse("FLATTOP", {"channel": "Q0_resonator"})
         sequence.add_pulse("FLATTOP", {"channel": "Q1_resonator"})
+        sequence.add_pulse("FLATTOP", {"channel": "Q2_resonator"})
+        sequence.add_pulse("FLATTOP", {"channel": "Q3_resonator"})
         sequence.add_synchronize_all_command()
 
 
     # create seqeunce config
     sequence_config = sequence.get_config()
-    sequence_config.get_parameter(("Q0",))["FLATTOP"]["flattop_width"] = 500
-    sequence_config.get_parameter(("Q0",))["FLATTOP"]["flattop_amplitude"] = 0.2
-    sequence_config.get_parameter(("Q0",))["FLATTOP"]["flattop_phase"] = np.pi * (1.01 + 0.1)
-    sequence_config.get_parameter(("Q1",))["FLATTOP"]["flattop_width"] = 500
-    sequence_config.get_parameter(("Q1",))["FLATTOP"]["flattop_phase"] = np.pi * (1.01 + 0.1)
-    sequence_config.get_parameter(("Q1",))["FLATTOP"]["flattop_amplitude"] = 0.2
+    for q in range(4):
+        sequence_config.get_parameter((f"Q{q}",))["FLATTOP"]["flattop_width"] = 500
+        sequence_config.get_parameter((f"Q{q}",))["FLATTOP"]["flattop_amplitude"] = 0.24
+        sequence_config.get_parameter((f"Q{q}",))["FLATTOP"]["flattop_phase"] = np.pi * (1.01 + 0.1)
 
     acquisition_config.flag_average_shots = True
     acquisition_config.flag_average_waveform = True
@@ -609,12 +613,10 @@ def example10():
     acquisition_config.acquisition_delay = 1030 * tunits.units.ns
 
     plt.figure(figsize=(4,9))
-    num_job = 5
+    num_job = 2
     for job_idx in range(num_job):
-        sequence_config.get_parameter(("Q0",))["BLANK"]["blank_width"] = 300
-        # channel_to_frequency_shift["Q0_resonator"] = 0.001*tunits.units.GHz/num_job * job_idx
-        # channel_to_frequency_shift["Q0_resonator"] = 0.0001*tunits.units.GHz/num_job
-        sequence_config.get_parameter(("Q0",))["FLATTOP"]["flattop_phase"] = np.pi * (0.44) + (2*np.pi/num_job) * job_idx
+        for q in range(4):
+            sequence_config.get_parameter((f"Q{q}",))["FLATTOP"]["flattop_phase"] = np.pi * (0.44) + (2*np.pi/num_job) * job_idx
         job = Job(sequence, sequence_config,  channel_to_frequency, channel_to_frequency_shift, channel_to_averaging_window, acquisition_config)
         job_qube_server = translate_job_qube_server(job, translate)
 
@@ -625,10 +627,96 @@ def example10():
             for capture_point_index, value in enumerate(data):
                 # plt.subplot(num_window,num_job,job_idx+capture_point_index*num_job+1)
                 plt.subplot(num_window,1,capture_point_index+1)
-                plt.xlim(-1e11, 1e11)
-                plt.ylim(-1e11, 1e11)
+                plt.xlim(-1e10, 1e10)
+                plt.ylim(-1e10, 1e10)
                 plt.grid()
-                plt.scatter(np.real(value), np.imag(value), label=f"job{job_idx}"+ch+f"_{capture_point_index}")
+                plt.scatter(np.real(value), np.imag(value), label=f"job{job_idx}_"+ch+f"_w{capture_point_index}")
+                plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+def example11():
+    # test No averaging
+    import pprint
+    import tunits
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from mt_quel_meas.meas_2Q import create_2Q_objects
+    from mt_quel_meas.job import Job, AcquisitionConfig
+    from mt_quel_meas.qubeserver.translate import translate_job_qube_server
+    from mt_quel_meas.qubeserver.execute import JobExecutorQubeServer
+    from mt_quel_meas.qubeserver.extract import extract_dataset
+    from mt_quel_util.constant import CONST_QuEL1SE_LOW_FREQ
+    
+    target_qubit_list = [0,1,4,5]
+    num_qubit = 16
+    executor = JobExecutorQubeServer()
+    sequence,  channel_to_frequency, channel_to_frequency_shift, channel_to_averaging_window, translate = create_2Q_objects(num_qubit, target_qubit_list, wiring_dict_16Q, CONST_QuEL1SE_LOW_FREQ)
+    acquisition_config = AcquisitionConfig()
+
+    # set frequency
+    channel_to_frequency["Q0_qubit"] = 4.0*tunits.units.GHz
+    channel_to_frequency["Q0_resonator"] = 6.0*tunits.units.GHz + CONST_QuEL1SE_LOW_FREQ.NCO_step_freq + 0.2*tunits.units.GHz
+    channel_to_frequency["Q1_qubit"] = 4.1*tunits.units.GHz
+    channel_to_frequency["Q1_resonator"] = 6.0*tunits.units.GHz + CONST_QuEL1SE_LOW_FREQ.NCO_step_freq + 0.3*tunits.units.GHz
+    channel_to_frequency["Q4_qubit"] = 4.2*tunits.units.GHz
+    channel_to_frequency["Q4_resonator"] = 6.0*tunits.units.GHz + CONST_QuEL1SE_LOW_FREQ.NCO_step_freq + 0.4*tunits.units.GHz
+    channel_to_frequency["Q5_qubit"] = 4.3*tunits.units.GHz
+    channel_to_frequency["Q5_resonator"] = 6.0*tunits.units.GHz + CONST_QuEL1SE_LOW_FREQ.NCO_step_freq + 0.35*tunits.units.GHz
+
+    # create seqeunce
+    sequence.add_blank_command(["Q0_resonator"], 100)
+    sequence.add_synchronize_all_command()
+    sequence.add_pulse("BLANK", {"channel": "Q0_resonator"})
+    sequence.add_capture_command(["Q0_resonator", "Q1_resonator"])
+    sequence.add_pulse("FLATTOP", {"channel": "Q0_resonator"})
+    sequence.add_pulse("FLATTOP", {"channel": "Q1_resonator"})
+    sequence.add_synchronize_all_command()
+
+    num_window = 3
+
+    for _ in range(num_window-1):
+        sequence.add_blank_command(["Q0_resonator"], 2500)
+        sequence.add_capture_command(["Q0_resonator", "Q1_resonator", "Q4_resonator", "Q5_resonator"])
+        sequence.add_pulse("FLATTOP", {"channel": "Q0_resonator"})
+        sequence.add_pulse("FLATTOP", {"channel": "Q1_resonator"})
+        sequence.add_pulse("FLATTOP", {"channel": "Q4_resonator"})
+        sequence.add_pulse("FLATTOP", {"channel": "Q5_resonator"})
+        sequence.add_synchronize_all_command()
+
+
+    # create seqeunce config
+    sequence_config = sequence.get_config()
+    for q in target_qubit_list:
+        sequence_config.get_parameter((f"Q{q}",))["FLATTOP"]["flattop_width"] = 500
+        sequence_config.get_parameter((f"Q{q}",))["FLATTOP"]["flattop_amplitude"] = 0.24
+        sequence_config.get_parameter((f"Q{q}",))["FLATTOP"]["flattop_phase"] = np.pi * (1.01 + 0.1)
+
+    acquisition_config.flag_average_shots = True
+    acquisition_config.flag_average_waveform = True
+    acquisition_config.num_shot = 100
+    acquisition_config.acquisition_timeout = 3 * tunits.units.s
+    acquisition_config.acquisition_delay = 1030 * tunits.units.ns
+
+    plt.figure(figsize=(4,9))
+    num_job = 2
+    for job_idx in range(num_job):
+        for q in target_qubit_list:
+            sequence_config.get_parameter((f"Q{q}",))["FLATTOP"]["flattop_phase"] = np.pi * (0.44) + (2*np.pi/num_job) * job_idx
+        job = Job(sequence, sequence_config,  channel_to_frequency, channel_to_frequency_shift, channel_to_averaging_window, acquisition_config)
+        job_qube_server = translate_job_qube_server(job, translate)
+
+        result_qube_server = executor.do_measurement(job_qube_server)
+        result = extract_dataset(job, job_qube_server, translate, result_qube_server)
+        for ch, data in result.items():
+            assert(data.ndim==1)
+            for capture_point_index, value in enumerate(data):
+                plt.subplot(num_window,1,capture_point_index+1)
+                plt.xlim(-1e10, 1e10)
+                plt.ylim(-1e10, 1e10)
+                plt.grid()
+                plt.scatter(np.real(value), np.imag(value), label=f"job{job_idx}_"+ch+f"_w{capture_point_index}")
+                plt.legend()
     plt.tight_layout()
     plt.show()
 
@@ -642,7 +730,9 @@ def example10():
 # example7() # no average
 # example8() # average waveform
 # example9() # both average
-example10() # mux
+# example10() # mux
+example11() # mux with dif unit
+
 
 
 

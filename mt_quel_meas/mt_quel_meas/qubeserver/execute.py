@@ -39,16 +39,16 @@ class JobExecutorQubeServer:
             logger.info(f"job execute | set num_shot | ch: {channel}, v: {acquisition_config.num_shot}")
 
     def _update_FNCO_frequency(self, awg_channel_to_dac_unit: dict[str, PhysicalUnitIdentifier], awg_channel_to_FNCO_frequency: dict[str, FrequencyType]) -> None:
-        for channel, frequency in awg_channel_to_FNCO_frequency.items():
-            physical_unit = awg_channel_to_dac_unit[channel]
+        for awg_channel, frequency in awg_channel_to_FNCO_frequency.items():
+            physical_unit = awg_channel_to_dac_unit[awg_channel]
             self._qube.select_device(physical_unit.box_port)
 
             freq_device = self._qube.frequency_tx_fine_nco(physical_unit.unit_index)
             if (freq_device["Hz"] - frequency["Hz"]) > 1:
                 self._qube.frequency_tx_fine_nco(physical_unit.unit_index, frequency["MHz"] * labrad.units.MHz)
-                logger.info(f"job execute | set FNCO frequency | ch: {channel}, v: {frequency}")
+                logger.info(f"job execute | set FNCO frequency | ch: {awg_channel}, v: {frequency}")
             else:
-                logger.info(f"job execute | set FNCO frequency | ch: {channel}, v: {frequency} skipped")
+                logger.info(f"job execute | set FNCO frequency | ch: {awg_channel}, v: {frequency} skipped")
 
     def _update_CNCO_frequency(self, boxport_to_CNCO_frequency: dict[str, FrequencyType]) -> None:
         for box_port, frequency in boxport_to_CNCO_frequency.items():
@@ -93,16 +93,18 @@ class JobExecutorQubeServer:
         labrad_ns = labrad.units.ns
         acquisition_duration_ns = acquisition_duration["ns"]
         for channel, capture_point_list in capture_channel_to_capture_point_list.items():
-            physical_unit = capture_channel_to_adc_unit[channel]
-            window_list: list = []
-            #TODO: upload all the relevant mux channels simultaneously
-            for capture_point in capture_point_list:
-                capture_point_ns = capture_point["ns"]
-                window = (capture_point_ns*labrad_ns, capture_point_ns*labrad_ns + acquisition_duration_ns*labrad_ns)
-                window_list.append(window)
-            self._qube.select_device(physical_unit.box_port)
-            self._qube.acquisition_window(physical_unit.unit_index, window_list)
-            logger.info(f"job execute | set capture windows | ch: {channel}, window: {window_list}")
+            if len(capture_point_list) == 0:
+                logger.info(f"job execute | set capture windows | ch: {channel}, no window")
+            else:
+                physical_unit = capture_channel_to_adc_unit[channel]
+                window_list: list = []
+                for capture_point in capture_point_list:
+                    capture_point_ns = capture_point["ns"]
+                    window = (capture_point_ns*labrad_ns, capture_point_ns*labrad_ns + acquisition_duration_ns*labrad_ns)
+                    window_list.append(window)
+                self._qube.select_device(physical_unit.box_port)
+                self._qube.acquisition_window(physical_unit.unit_index, window_list)
+                logger.info(f"job execute | set capture windows | ch: {channel}, window: {window_list}")
 
     def _update_FIR_coefficients(self, capture_channel_to_adc_unit: dict[str, PhysicalUnitIdentifier], capture_channel_to_FIR_coefficients: dict[str, np.ndarray]) -> None:
         for channel, FIR_coefficients in capture_channel_to_FIR_coefficients.items():
@@ -135,21 +137,24 @@ class JobExecutorQubeServer:
             acquisition_mode = "2"
         return acquisition_mode
 
-    def _upload_parameters(self, awg_channel_to_dac_unit: dict[str, PhysicalUnitIdentifier], acquisition_config: AcquisitionConfigQubeServer) -> None:
-        acquisition_mode = self._get_acquisition_mode(acquisition_config)
+    def _upload_parameters(self, awg_channel_to_dac_unit: dict[str, PhysicalUnitIdentifier]) -> None:
         for awg_channel, physical_unit in awg_channel_to_dac_unit.items():
             self._qube.select_device(physical_unit.box_port)
-            #TODO check with port index
-            if "readout" in physical_unit.box_port:
-                self._qube.acquisition_mode(physical_unit.unit_index, acquisition_mode)
-                logger.info(f"job execute | set acq mode | ch: {physical_unit.box_port}, mode: {acquisition_mode} (shot_avg={acquisition_config.flag_average_shots}, time_avg={acquisition_config.flag_average_waveform})")
-                self._qube.upload_parameters([0,])
-                logger.info(f"job execute | upload parameters | box: {physical_unit.box_port} ch: 0")
-                self._qube.upload_readout_parameters([physical_unit.unit_index,])
-                logger.info(f"job execute | upload readout parameters | box: {physical_unit.box_port} ch: {physical_unit.unit_index}")
-            else:
-                self._qube.upload_parameters([physical_unit.unit_index,])
-                logger.info(f"job execute | upload parameters | box: {physical_unit.box_port} ch: {physical_unit.unit_index}")
+            self._qube.upload_parameters([physical_unit.unit_index,])
+            logger.info(f"job execute | upload parameters | box: {physical_unit.box_port} ch: {physical_unit.unit_index}")
+
+    def _upload_acquisition_mode(self, capture_channel_to_adc_unit: dict[str, PhysicalUnitIdentifier], acquisition_config: AcquisitionConfigQubeServer) -> None:
+        acquisition_mode = self._get_acquisition_mode(acquisition_config)
+        for capture_channel, physical_unit in capture_channel_to_adc_unit.items():
+            self._qube.select_device(physical_unit.box_port)
+            self._qube.acquisition_mode(physical_unit.unit_index, acquisition_mode)
+            logger.info(f"job execute | set acq mode | ch: {physical_unit.box_port}, mode: {acquisition_mode} (shot_avg={acquisition_config.flag_average_shots}, time_avg={acquisition_config.flag_average_waveform})")
+
+    def _upload_readout_parameters(self, capture_channel_to_adc_unit: dict[str, PhysicalUnitIdentifier]) -> None:
+        for capture_channel, physical_unit in capture_channel_to_adc_unit.items():
+            self._qube.select_device(physical_unit.box_port)
+            self._qube.upload_readout_parameters([physical_unit.unit_index,])
+            logger.info(f"job execute | upload readout parameters | box: {physical_unit.box_port} ch: {physical_unit.unit_index}")
 
     def _do_measurement(self) -> None:
         # send start-trigger-stop as a packet to minimize the roundtrip
@@ -175,6 +180,9 @@ class JobExecutorQubeServer:
         result: dict[str, np.ndarray] = {}
         # TODO: get mux simultaneously for faster comms
         for channel, capture_point_list in capture_channel_to_capture_point.items():
+            if len(capture_point_list) == 0:
+                logger.info(f"job execute | download waveform | ch: {channel} no window")
+                continue
             physical_unit = capture_channel_to_adc_unit[channel]
             self._qube.select_device(physical_unit.box_port)
             raw_waveform = self._qube.download_waveform(physical_unit.unit_index)
@@ -203,10 +211,9 @@ class JobExecutorQubeServer:
         self._update_averaging_window_coefficients(job.capture_channel_to_adc_unit, job.capture_channel_to_averaging_window_coefficients)
 
         # measurement
-        self._upload_parameters(job.awg_channel_to_dac_unit, job.acquisition_config)
+        self._upload_parameters(job.awg_channel_to_dac_unit)
+        self._upload_acquisition_mode(job.capture_channel_to_adc_unit, job.acquisition_config)
+        self._upload_readout_parameters(job.capture_channel_to_adc_unit)
         self._do_measurement()
         dataset = self._download_waveform(job.capture_channel_to_adc_unit, job.capture_channel_to_capture_point_list)
         return dataset
-
-
-
