@@ -4,9 +4,12 @@ from tunits import Value, UnitMismatchError, ValueArray
 from pydantic import PlainValidator, PlainSerializer
 import json
 
+
 # create validator for tunits frequency
 def _serialize_typedunits(v: Value):
     return {"value": v.value, "units": v.units}
+
+
 # frequency validator
 def _validate_frequency_type(v: Any) -> Any:
     if not isinstance(v, Value):
@@ -16,6 +19,8 @@ def _validate_frequency_type(v: Any) -> Any:
     except UnitMismatchError as e:
         raise e
     return v
+
+
 # time validator
 def _validate_time_type(v: Any) -> Any:
     if not isinstance(v, Value):
@@ -26,7 +31,9 @@ def _validate_time_type(v: Any) -> Any:
         raise e
     return v
 
-# NOTE: use of tunits.Frequency and tunits.Time incur errors in mypy check. Thus, we use Value instead and check with pydantic if we need.
+
+# NOTE: use of tunits.Frequency and tunits.Time incur errors in mypy check.
+# Thus, we use Value instead and check with pydantic if we need.
 FrequencyType = Annotated[Value, PlainValidator(_validate_frequency_type), PlainSerializer(_serialize_typedunits)]
 TimeType = Annotated[Value, PlainValidator(_validate_time_type), PlainSerializer(_serialize_typedunits)]
 
@@ -44,7 +51,8 @@ class JSON_TypedUnitsEncoder(json.JSONEncoder):
             else:
                 return {"__numpy__real__": True, "value": obj.tolist()}
         return super().default(obj)
-    
+
+
 def JSON_typedunits_hook(v: Any) -> Any:
     if isinstance(v, dict) and ("__typedunits__value__" in v):
         return Value(v["value"], v["units"])

@@ -1,13 +1,16 @@
+# flake8: noqa
 import numpy as np
 from mt_pulse.pulse import Pulse
 from mt_pulse.pulse_library import PulseLibrary
 from mt_pulse.shape_preset import get_preset_shape_library
+
 
 def BLANK() -> Pulse:
     pulse = Pulse(name="BLANK", channel_list=["channel"])
     w = pulse.add_variable("blank_width", default_value=100, description="margine before and after sequence")
     pulse.add_shape(channel_name="channel", shape_name="blank", shape_param={"width": w})
     return pulse
+
 
 def FLATTOP() -> Pulse:
     pulse = Pulse(name="FLATTOP", channel_list=["channel"])
@@ -16,6 +19,7 @@ def FLATTOP() -> Pulse:
     p = pulse.add_variable("flattop_phase", default_value=0, description="phase of flattop pulse")
     pulse.add_shape(channel_name="channel", shape_name="flattop", shape_param={"width": w, "amplitude": a, "phase": p})
     return pulse
+
 
 def HPI() -> Pulse:
     pulse = Pulse(name="HPI", channel_list=["qubit"])
@@ -27,6 +31,7 @@ def HPI() -> Pulse:
     pulse.add_shape(channel_name="qubit", shape_name="gaussian", shape_param={"width": w, "amplitude": a, "phase": p})
     pulse.add_shape(channel_name="qubit", shape_name="blank", shape_param={"width": m*w})
     return pulse
+
 
 def TPCX() -> Pulse:
     pulse = Pulse(name="TPCX", channel_list=["control", "target"])
@@ -50,6 +55,7 @@ def TPCX() -> Pulse:
     pulse.add_shape(channel_name="target",  shape_name="flattop_cosrise", shape_param={"width": tpcx_w, "risetime": tpcx_r, "amplitude": tpcx_ca, "phase": tpcx_cp + np.pi})
     return pulse
 
+
 def CR() -> Pulse:
     pulse = Pulse(name="CR", channel_list=["control", "target"])
     cr_w = pulse.add_variable("cr_width", default_value=400, description="width of CR main and counter pulse")
@@ -61,6 +67,7 @@ def CR() -> Pulse:
     pulse.add_shape(channel_name="control", shape_name="flattop_cosrise", shape_param={"width": cr_w, "risetime": cr_r, "amplitude": cr_ma, "phase": cr_mp})
     pulse.add_shape(channel_name="target",  shape_name="flattop_cosrise", shape_param={"width": cr_w, "risetime": cr_r, "amplitude": cr_ca, "phase": cr_cp})
     return pulse
+
 
 def MEAS() -> Pulse:
     pulse = Pulse(name="MEAS", channel_list=["resonator"])

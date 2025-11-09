@@ -1,14 +1,15 @@
 import numpy as np
 from mt_circuit.circuit import QuantumCircuit
 from mt_circuit.util import pauli_exp
-from mt_circuit.gate import X,Y,Z
+from mt_circuit.gate import X, Y, Z
 from mt_circuit.decompose.decompose import u2_matrix_to_HPI_RZ_form, u4_matrix_to_CHPI_u2_form
+
 
 def remove_u4(circuit: QuantumCircuit) -> QuantumCircuit:
     new_circuit = QuantumCircuit(circuit.num_qubit)
     for gate in circuit.gate_list:
         gate_name = gate["name"]
-        assert(gate_name in ["MZ", "HPI", "CHPI", "SYNC", "RZ", "u2", "RX", "RY", "u4"])
+        assert gate_name in ["MZ", "HPI", "CHPI", "SYNC", "RZ", "u2", "RX", "RY", "u4"]
         if gate_name in ["u4"]:
             c = u4_matrix_to_CHPI_u2_form(gate["matrix"])
             for temp_gate in c.gate_list:
@@ -18,6 +19,7 @@ def remove_u4(circuit: QuantumCircuit) -> QuantumCircuit:
             new_circuit.add_gate(**gate)
     return new_circuit
 
+
 def bundle_1q(circuit: QuantumCircuit) -> QuantumCircuit:
     new_circuit = QuantumCircuit(circuit.num_qubit)
     cache: dict[int, np.ndarray | None] = {}
@@ -26,7 +28,7 @@ def bundle_1q(circuit: QuantumCircuit) -> QuantumCircuit:
 
     for gate in circuit.gate_list:
         gate_name = gate["name"]
-        assert(gate_name in ["MZ", "HPI", "CHPI", "SYNC", "RZ", "u2", "RX", "RY"])
+        assert gate_name in ["MZ", "HPI", "CHPI", "SYNC", "RZ", "u2", "RX", "RY"]
 
         # if there is cache, multiply matrix. If not, add as gate
         if gate_name in ["RZ"]:
@@ -47,7 +49,7 @@ def bundle_1q(circuit: QuantumCircuit) -> QuantumCircuit:
             elif gate_name == "u2":
                 u = gate["matrix"]
             else:
-                assert(False)
+                assert False
 
             if cache[idx] is None:
                 cache[idx] = u
@@ -74,7 +76,7 @@ def remove_u2(circuit: QuantumCircuit) -> QuantumCircuit:
     new_circuit = QuantumCircuit(circuit.num_qubit)
     for gate in circuit.gate_list:
         gate_name = gate["name"]
-        assert(gate_name in ["MZ", "HPI", "CHPI", "SYNC", "RZ", "u2"])
+        assert gate_name in ["MZ", "HPI", "CHPI", "SYNC", "RZ", "u2"]
         if gate_name in ["u2"]:
             u = gate["matrix"]
             c = u2_matrix_to_HPI_RZ_form(u)
@@ -91,7 +93,7 @@ def push_rz(circuit: QuantumCircuit) -> QuantumCircuit:
     phase_accum = np.zeros(circuit.num_qubit, dtype=float)
     for gate in circuit.gate_list:
         gate_name = gate["name"]
-        assert(gate_name in ["MZ", "HPI", "CHPI", "SYNC", "RZ"])
+        assert gate_name in ["MZ", "HPI", "CHPI", "SYNC", "RZ"]
         if gate_name in ["RZ"]:
             phase_accum[gate["targets"][0]] += gate["angle"]
         elif gate_name in ["HPI"]:

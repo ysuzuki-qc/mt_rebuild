@@ -1,0 +1,104 @@
+{
+    "qubit": {
+        "Q0": {
+            "device_name": "quel1se-2-01",
+            "port_index": 7
+        },
+        "Q1": {
+            "device_name": "quel1se-2-01",
+            "port_index": 6
+        },
+        "Q2": {
+            "device_name": "quel1se-2-01",
+            "port_index": 9
+        },
+        "Q3": {
+            "device_name": "quel1se-2-01",
+            "port_index": 8
+        },
+        "Q4": {
+            "device_name": "quel1se-2-02",
+            "port_index": 7
+        },
+        "Q5": {
+            "device_name": "quel1se-2-02",
+            "port_index": 6
+        },
+        "Q6": {
+            "device_name": "quel1se-2-02",
+            "port_index": 9
+        },
+        "Q7": {
+            "device_name": "quel1se-2-02",
+            "port_index": 8
+        },
+        "Q8": {
+            "device_name": "quel1se-2-03",
+            "port_index": 7
+        },
+        "Q9": {
+            "device_name": "quel1se-2-03",
+            "port_index": 6
+        },
+        "Q10": {
+            "device_name": "quel1se-2-03",
+            "port_index": 9
+        },
+        "Q11": {
+            "device_name": "quel1se-2-03",
+            "port_index": 8
+        },
+        "Q12": {
+            "device_name": "quel1se-2-04",
+            "port_index": 7
+        },
+        "Q13": {
+            "device_name": "quel1se-2-04",
+            "port_index": 6
+        },
+        "Q14": {
+            "device_name": "quel1se-2-04",
+            "port_index": 9
+        },
+        "Q15": {
+            "device_name": "quel1se-2-04",
+            "port_index": 8
+        }
+    },
+    "resonator": {
+        "M0": {
+            "device_name": "quel1se-2-01",
+            "port_index": 1
+        },
+        "M1": {
+            "device_name": "quel1se-2-02",
+            "port_index": 1
+        },
+        "M2": {
+            "device_name": "quel1se-2-03",
+            "port_index": 1
+        },
+        "M3": {
+            "device_name": "quel1se-2-04",
+            "port_index": 1
+        }
+    },
+    "jpa": {
+        "M0": {
+            "device_name": "quel1se-2-01",
+            "port_index": 1
+        },
+        "M1": {
+            "device_name": "quel1se-2-02",
+            "port_index": 1
+        },
+        "M2": {
+            "device_name": "quel1se-2-03",
+            "port_index": 1
+        },
+        "M3": {
+            "device_name": "quel1se-2-04",
+            "port_index": 1
+        }
+    }
+}

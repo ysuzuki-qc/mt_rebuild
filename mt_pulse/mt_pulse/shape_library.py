@@ -4,6 +4,7 @@ from typing import Any, Callable
 import numpy as np
 from mt_pulse.shape import Shape
 
+
 @dataclass(frozen=True, slots=True)
 class ShapeLibrary:
     _shape_dict: dict[str, Shape] = field(default_factory=dict)
@@ -41,7 +42,6 @@ class ShapeLibrary:
         for name, shape in json_dict["_shape_dict"].items():
             shape_dict[name] = Shape.from_json_dict(shape)
         lib = ShapeLibrary(
-            _shape_dict = shape_dict,
+            _shape_dict=shape_dict,
         )
         return lib
-

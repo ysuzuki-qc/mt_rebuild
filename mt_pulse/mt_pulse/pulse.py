@@ -5,8 +5,9 @@ import numpy as np
 import sympy as sp
 from mt_pulse.shape_library import ShapeLibrary
 
+
 @dataclass(frozen=True, slots=True)
-class Pulse():
+class Pulse:
     name: str
     channel_list: list[str]
     _shape_list: list[tuple[str, str, dict[str, sp.Expr]]] = field(default_factory=list)
@@ -24,7 +25,7 @@ class Pulse():
         data["_variable_description"] = self._variable_description
         data["_variable_default_value"] = self._variable_default_value
         return data
-    
+
     @staticmethod
     def from_json_dict(data: dict) -> Pulse:
         data_init = {}
@@ -37,7 +38,6 @@ class Pulse():
         data_init["_variable_description"] = data["_variable_description"]
         data_init["_variable_default_value"] = data["_variable_default_value"]
         return Pulse(**data_init)
-
 
     def add_variable(self, variable_name: str, default_value: Any, description: str) -> sp.Symbol:
         variable = sp.Symbol(variable_name)
@@ -52,7 +52,10 @@ class Pulse():
                 try:
                     value = sp.sympify(value)
                 except sp.SympifyError:
-                    raise ValueError(f"value {value} in key {key} cannot be converted to sympy obj. Please check the value is sympify-able objects such as sympy expr and python/numpy basic objects.")
+                    raise ValueError(
+                        f"value {value} in key {key} cannot be converted to sympy obj. "
+                        "Please check the value is sympify-able objects such as sympy expr or basic objects."
+                    )
             verified_dict[key] = value
         return verified_dict
 
@@ -63,7 +66,9 @@ class Pulse():
         for channel_name, shape_name, shape_param in self._shape_list:
             # valdate
             if shape_name not in shape_library._shape_dict:
-                raise ValueError(f"shape {shape_name} is not listed in shape library list {list(shape_library._shape_dict.keys())}")
+                raise ValueError(
+                    f"shape {shape_name} is not listed in shape library list {list(shape_library._shape_dict.keys())}"
+                )
             if channel_name not in self.channel_list:
                 raise ValueError(f"channnel name {channel_name} not found in channnel list {self.channel_list}")
             shape_param = self._verify_sympy_expr(shape_param)
@@ -85,7 +90,9 @@ class Pulse():
             desc[variable_name] = self._variable_description[variable_name]
         return desc
 
-    def _evaluate_shape_param(self, config: dict[str, float], shape_param: dict[str, Union[float, sp.Expr]]) -> dict[str, float]:
+    def _evaluate_shape_param(
+        self, config: dict[str, float], shape_param: dict[str, Union[float, sp.Expr]]
+    ) -> dict[str, float]:
         config_symbol_names = set(config.keys())
         assigned_params = {}
         for key, value in shape_param.items():
@@ -99,11 +106,12 @@ class Pulse():
                 assigned_params[key] = value
         return assigned_params
 
-
-    def get_waveform(self, time_slots: np.ndarray, current_time: float, config: dict[str, float], shape_library: ShapeLibrary) -> tuple[dict[str, np.ndarray], float]:
+    def get_waveform(
+        self, time_slots: np.ndarray, current_time: float, config: dict[str, float], shape_library: ShapeLibrary
+    ) -> tuple[dict[str, np.ndarray], float]:
         if time_slots.ndim != 1:
             raise ValueError(f"time_slots must be 1D array, but {time_slots.ndim}-dim array is provided")
-        
+
         waveform_dict = {}
         cursor_dict = {}
         for channel_name in self.channel_list:
@@ -113,20 +121,19 @@ class Pulse():
         for channel_name, shape_name, shape_param in self._shape_list:
             assigned_params = self._evaluate_shape_param(config, shape_param)
             shape_func = shape_library.get_function(shape_name, assigned_params)
-            assert(channel_name in self.channel_list)
+            assert channel_name in self.channel_list
             waveform_dict[channel_name] += shape_func(time_slots - cursor_dict[channel_name])
             cursor_dict[channel_name] += shape_library.get_progress(shape_name, assigned_params)
         duration = max(cursor_dict.values()) - current_time
         return waveform_dict, duration
-    
+
     def get_duration(self, config: dict[str, float], shape_library: ShapeLibrary) -> float:
         cursor_dict: dict[str, float] = {}
         for channel_name in self.channel_list:
-            cursor_dict[channel_name] = 0.
+            cursor_dict[channel_name] = 0.0
         for channel_name, shape, shape_param in self._shape_list:
             assigned_params = self._evaluate_shape_param(config, shape_param)
-            assert(channel_name in self.channel_list)
+            assert channel_name in self.channel_list
             cursor_dict[channel_name] += shape_library.get_progress(shape, assigned_params)
         duration = max(cursor_dict.values())
         return duration
-

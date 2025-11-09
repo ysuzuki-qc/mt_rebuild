@@ -11,7 +11,8 @@ def pauli_exp(pauli: np.ndarray, angle: float) -> np.ndarray:
     Returns:
         np.ndarray: result matrix
     """
-    return np.cos(angle / 2) * np.eye(*pauli.shape) - 1.j * np.sin(angle / 2) * pauli
+    return np.cos(angle / 2) * np.eye(*pauli.shape) - 1.0j * np.sin(angle / 2) * pauli
+
 
 def check_unitary_equal_up_to_phase(u1: np.ndarray, u2: np.ndarray) -> bool:
     if u1.shape != u2.shape:
@@ -20,8 +21,8 @@ def check_unitary_equal_up_to_phase(u1: np.ndarray, u2: np.ndarray) -> bool:
         return False
 
     u = u1 @ u2.T.conj()
-    if not np.allclose(np.abs(u[0,0]), 1):
+    if not np.allclose(np.abs(u[0, 0]), 1):
         return False
 
-    u /= u[0,0]
+    u /= u[0, 0]
     return np.allclose(u, np.eye(u.shape[0]))

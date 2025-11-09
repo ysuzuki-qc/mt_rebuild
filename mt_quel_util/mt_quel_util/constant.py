@@ -3,6 +3,7 @@ from pydantic.dataclasses import dataclass
 from tunits.units import GHz, MHz, ns, ms
 from mt_util.tunits_util import FrequencyType, TimeType
 
+
 @dataclass(frozen=True, slots=True)
 class InstrumentConstantQuEL:
     # list of port types
@@ -61,43 +62,42 @@ class InstrumentConstantQuEL:
 
 
 CONST_QuEL1SE_LOW_FREQ = InstrumentConstantQuEL(
-    port_type = ["ReadIn", "ReadOut", "Pump", "Unused", "Unused", "Unused", "Control", "Control", "Control", "Control", "Unused", "Unused"],
-    num_dac_channel = [0, 1, 1, 0, 0, 0, 1, 3, 3, 1, 0, 0],
-
-    LO_freq_qubit = 0.0 * GHz,
-    LO_sideband_qubit = "Direct",
-
+    port_type=[
+        "ReadIn",
+        "ReadOut",
+        "Pump",
+        "Unused",
+        "Unused",
+        "Unused",
+        "Control",
+        "Control",
+        "Control",
+        "Control",
+        "Unused",
+        "Unused",
+    ],
+    num_dac_channel=[0, 1, 1, 0, 0, 0, 1, 3, 3, 1, 0, 0],
+    LO_freq_qubit=0.0 * GHz,
+    LO_sideband_qubit="Direct",
     # LO_freq_resonator = 8.5 * GHz,
-    LO_freq_resonator = 9.0 * GHz,
-    LO_sideband_resonator = "LSB",
-
-    LO_freq_jpa = 9.0 * GHz,
-    LO_sideband_jpa = "LSB",
-
-    NCO_sampling_freq = 2000*MHz,
-    NCO_step_freq = (12000/(2**9))*MHz,  # 23.4375 MHz
-
-    NCO_bandwidth_effective = 1600*MHz,
-    DAC_bandwidth_effective = 400*MHz,
-
-    ADC_decimated_freq = 125*MHz,
-
-    DACBB_sampling_freq = 500*MHz,
-    ADCBB_sampling_freq = 500*MHz,
-    
-    ACQ_max_fir_coeff = 16,
-
-    ACQ_first_window_position_timestep = 128*ns,
-    ACQ_window_length_min = 64*ns,
-    ACQ_window_length_max = 2048*ns,
-    ACQ_window_length_step = 8*ns,
-
-    waveform_length_maximum = 2000000*ns,
-    waveform_length_step = 128*ns,
-    repetition_time_step = 10240*ns,
-
-    synchronization_delay = 100*ms,
+    LO_freq_resonator=9.0 * GHz,
+    LO_sideband_resonator="LSB",
+    LO_freq_jpa=9.0 * GHz,
+    LO_sideband_jpa="LSB",
+    NCO_sampling_freq=2000 * MHz,
+    NCO_step_freq=(12000 / (2**9)) * MHz,  # 23.4375 MHz
+    NCO_bandwidth_effective=1600 * MHz,
+    DAC_bandwidth_effective=400 * MHz,
+    ADC_decimated_freq=125 * MHz,
+    DACBB_sampling_freq=500 * MHz,
+    ADCBB_sampling_freq=500 * MHz,
+    ACQ_max_fir_coeff=16,
+    ACQ_first_window_position_timestep=128 * ns,
+    ACQ_window_length_min=64 * ns,
+    ACQ_window_length_max=2048 * ns,
+    ACQ_window_length_step=8 * ns,
+    waveform_length_maximum=2000000 * ns,
+    waveform_length_step=128 * ns,
+    repetition_time_step=10240 * ns,
+    synchronization_delay=100 * ms,
 )
-
-
-

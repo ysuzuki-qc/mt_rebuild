@@ -3,6 +3,7 @@ from typing import Any, Callable
 from dataclasses import dataclass
 import sympy as sp
 
+
 @dataclass(frozen=True, slots=True)
 class Shape:
     name: str
@@ -10,28 +11,38 @@ class Shape:
     progress_time_ns: sp.Expr
 
     def __post_init__(self):
-        get_symbol_names = lambda symbol_list : set([s.name for s in symbol_list])
+        def get_symbol_names(symbol_list: list[sp.Expr]) -> set[str]:
+            return set([s.name for s in symbol_list])
+
         symbol_names = set()
         symbol_names |= get_symbol_names(self.progress_time_ns.free_symbols)
         if "t" in symbol_names:
-            raise ValueError("variable 't' is registered for time and cannot be used except for shape_expr, but used in description. ")
+            raise ValueError(
+                "variable 't' is registered for time and cannot be used except for shape_expr, but used in description."
+            )
+
     def to_json_dict(self) -> dict:
         return {
             "name": self.name,
             "shape_expr": sp.srepr(self.shape_expr),
             "progress_time_ns": sp.srepr(self.progress_time_ns),
         }
+
     @staticmethod
     def from_json_dict(json_dict: dict) -> Shape:
         pulse = Shape(
-            name = json_dict["name"],
-            shape_expr = sp.sympify(json_dict["shape_expr"]),
-            progress_time_ns = sp.sympify(json_dict["progress_time_ns"]),
+            name=json_dict["name"],
+            shape_expr=sp.sympify(json_dict["shape_expr"]),
+            progress_time_ns=sp.sympify(json_dict["progress_time_ns"]),
         )
         return pulse
+
     def get_symbol_name_set(self) -> set[str]:
         symbol_names = set()
-        get_symbol_names = lambda symbol_list : set([s.name for s in symbol_list])
+
+        def get_symbol_names(symbol_list: list[sp.Expr]) -> set[str]:
+            return set([s.name for s in symbol_list])
+
         symbol_names |= get_symbol_names(self.shape_expr.free_symbols)
         symbol_names |= get_symbol_names(self.progress_time_ns.free_symbols)
         return symbol_names
@@ -57,4 +68,3 @@ class Shape:
             raise ValueError(f"{free_symbols} are left as free symbols")
         value = float(value)
         return value
-       

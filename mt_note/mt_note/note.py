@@ -6,6 +6,7 @@ import numpy as np
 import tunits
 import pydantic
 
+
 class NoteEncoder(json.JSONEncoder):
     @pydantic.validate_call
     def default(self, obj: Any) -> Any:
@@ -22,6 +23,7 @@ class NoteEncoder(json.JSONEncoder):
                 return {"__numpy__real__": True, "value": obj.tolist()}
         return super().default(obj)
 
+
 @pydantic.validate_call
 def _note_object_hook(obj: Any) -> Any:
     if isinstance(obj, dict) and "__tunits__value__" in obj:
@@ -34,6 +36,7 @@ def _note_object_hook(obj: Any) -> Any:
         return np.array(obj["real"]) + 1j * np.array(obj["imag"])
     return obj
 
+
 @pydantic.dataclasses.dataclass(frozen=True, slots=True)
 class Action:
     tag: str
@@ -41,6 +44,7 @@ class Action:
     update: dict[str, Any]
     item_created: list[str]
     item_old: dict[str, Any]
+
 
 @pydantic.dataclasses.dataclass(slots=True)
 class Note:
@@ -51,7 +55,7 @@ class Note:
     @pydantic.validate_call
     def to_json_str(self) -> str:
         return json.dumps(self._internal_dict, cls=NoteEncoder)
-    
+
     @classmethod
     @pydantic.validate_call
     def from_json_str(cls, json_str: str) -> Self:
@@ -88,7 +92,9 @@ class Note:
                 if self.lock:
                     raise ValueError(f"Notes are locked but try to create new item {key}")
                 item_created.append(key)
-        action = Action(tag=tag, update=data, item_created=item_created, item_old=item_old, time=datetime.datetime.now())
+        action = Action(
+            tag=tag, update=data, item_created=item_created, item_old=item_old, time=datetime.datetime.now()
+        )
         self._action_log.append(action)
         self._update_internal(data)
 
@@ -114,14 +120,13 @@ class Note:
         return self.__getattr__(key)
 
     @pydantic.validate_call
-    def erase_action_log(self) -> None: 
+    def erase_action_log(self) -> None:
         self._action_log.clear()
 
     @pydantic.validate_call
     def show_log(self) -> None:
         for action in self._action_log:
             print(f"{action.time} {action.tag} : {action.update}")
-
 
     @pydantic.validate_call
     def __str__(self) -> str:

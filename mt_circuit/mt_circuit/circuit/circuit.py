@@ -5,15 +5,19 @@ from dataclasses import dataclass, asdict, field
 import numpy as np
 import cirq
 
+
 @dataclass(frozen=True)
 class QuantumCircuit:
     num_qubit: int
     gate_list: list[dict] = field(default_factory=list)
-    def add_gate(self, name: str, targets: list[int], *, angle: Optional[float] = None, matrix: Optional[np.ndarray] = None) -> None:
-        gate_name_list =  ["RX","RY","RZ"]
-        gate_name_list += ["u2","u4"]
-        gate_name_list += ["HPI","CHPI"]
-        gate_name_list += ["MZ","BARRIER"]
+
+    def add_gate(
+        self, name: str, targets: list[int], *, angle: Optional[float] = None, matrix: Optional[np.ndarray] = None
+    ) -> None:
+        gate_name_list = ["RX", "RY", "RZ"]
+        gate_name_list += ["u2", "u4"]
+        gate_name_list += ["HPI", "CHPI"]
+        gate_name_list += ["MZ", "BARRIER"]
         gate_name_list += ["SYNC"]
         if name not in gate_name_list:
             raise ValueError(f"gate name: {name} is not in known gate list. Available gates are {gate_name_list}")
@@ -23,23 +27,23 @@ class QuantumCircuit:
             expect_angle = True
             expect_matrix = False
             expect_num_target = 1
-        elif name in ["u2",]:
+        elif name in ["u2"]:
             expect_angle = False
             expect_matrix = True
             expect_num_target = 1
-        elif name in ["u4",]:
+        elif name in ["u4"]:
             expect_angle = False
             expect_matrix = True
             expect_num_target = 2
-        elif name in ["HPI",]:
+        elif name in ["HPI"]:
             expect_angle = True
             expect_matrix = False
             expect_num_target = 1
-        elif name in ["CHPI",]:
+        elif name in ["CHPI"]:
             expect_angle = True
             expect_matrix = False
             expect_num_target = 2
-        elif name in ["MZ","BARRIER"]:
+        elif name in ["MZ", "BARRIER"]:
             expect_angle = False
             expect_matrix = False
             expect_num_target = 1
@@ -64,7 +68,7 @@ class QuantumCircuit:
             # check target count
             if len(targets) != expect_num_target:
                 raise ValueError(f"length of targets must be {expect_num_target}, but given count is {len(targets)}")
-            # check matrix shape        
+            # check matrix shape
             if expect_matrix and np.array(matrix).shape != (2**expect_num_target, 2**expect_num_target):
                 raise ValueError(f"size of matrix is inconsistent to gate {name}")
 
@@ -87,7 +91,7 @@ class QuantumCircuit:
         for gate in qc.gate_list:
             if gate["matrix"] is not None:
                 real, imag = gate["matrix"]
-                matrix = np.array(real, dtype=complex) + 1.j * np.array(imag, dtype=complex)
+                matrix = np.array(real, dtype=complex) + 1.0j * np.array(imag, dtype=complex)
                 gate["matrix"] = matrix
         return qc
 
@@ -116,13 +120,13 @@ class QuantumCircuit:
 
             elif gate_name == "HPI":
                 gates.append(cirq.rz(angle)(q[targets[0]]))
-                gates.append(cirq.rx(np.pi/2)(q[targets[0]]))
+                gates.append(cirq.rx(np.pi / 2)(q[targets[0]]))
                 gates.append(cirq.rz(-angle)(q[targets[0]]))
             elif gate_name == "CHPI":
                 gates.append(cirq.H(q[targets[0]]))
                 gates.append(cirq.rz(angle)(q[targets[1]]))
                 gates.append(cirq.CX(q[targets[1]], q[targets[0]]))
-                gates.append(cirq.rx(np.pi/2)(q[targets[1]]))
+                gates.append(cirq.rx(np.pi / 2)(q[targets[1]]))
                 gates.append(cirq.CX(q[targets[1]], q[targets[0]]))
                 gates.append(cirq.rz(-angle)(q[targets[1]]))
                 gates.append(cirq.H(q[targets[0]]))
@@ -136,7 +140,6 @@ class QuantumCircuit:
             else:
                 raise ValueError(f"Unknown gate: {gate}")
         U = cirq.unitary(cirq.Circuit(gates))
-        dim = 2 ** self.num_qubit
-        assert(U.shape == (dim, dim))
+        dim = 2**self.num_qubit
+        assert U.shape == (dim, dim)
         return U
-

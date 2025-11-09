@@ -2,7 +2,6 @@ from dataclasses import dataclass
 import numpy as np
 from typing import Any
 from tunits.units import us, ms, ns
-import mt_pulse
 from mt_pulse.sequence import Sequence, SequenceConfig
 from mt_util.tunits_util import FrequencyType, TimeType
 from mt_quel_util.constant import InstrumentConstantQuEL
@@ -18,6 +17,7 @@ class AcquisitionConfig:
     flag_average_waveform: bool = False
     flag_average_shots: bool = False
 
+
 @dataclass(frozen=True, slots=True)
 class Job:
     sequence: Sequence
@@ -27,9 +27,11 @@ class Job:
     sequence_channel_to_averaging_window: dict[str, np.ndarray]
     acquisition_config: AcquisitionConfig
 
+
 @dataclass(frozen=True, slots=True)
-class TranslationInfo:
+class QuelAssignment:
+    wiring_dict: dict[str, dict[str, dict[str, Any]]]
     sequence_channel_to_device: dict[str, str]
     sequence_channel_to_port_index: dict[str, int]
-    wiring_dict: dict[str, dict[str, str]]
+    sequence_channel_frequency_reference: dict[str, str]
     instrument_const: InstrumentConstantQuEL

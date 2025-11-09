@@ -15,11 +15,13 @@ class AcquisitionConfigQuelware:
     flag_average_waveform: bool = False
     flag_average_shots: bool = False
 
+
 @dataclass(frozen=True, slots=True)
 class ChannelIdentifier:
     box: str
     port: int
     dac: int
+
 
 @dataclass(frozen=True, slots=True)
 class JobQuelware:
