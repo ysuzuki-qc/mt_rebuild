@@ -21,7 +21,7 @@ with open("wiring_dict.json") as fin:
 
 
 def example1():
-    target_qubit_list = [1, 2, 3, 6, 9]
+    target_qubit_list = [3, 1, 2, 6, 9]
     num_qubit = 16
     executor = JobExecutorQubeServer()
     num_averageing_window_sample = get_available_averaging_window_sample(CONST_QuEL1SE_LOW_FREQ)
@@ -49,7 +49,10 @@ def example1():
 
     # set frequency
     for i, q in enumerate(target_qubit_list):
-        channel_to_frequency[f"Q{q}_qubit"] = (4.0 + 0.1 * i) * tunits.units.GHz
+        freq = (4.0 + 0.1 * i) * tunits.units.GHz
+        if i != 0:
+            freq += 0.2 * tunits.units.GHz
+        channel_to_frequency[f"Q{q}_qubit"] = freq
         channel_to_frequency[f"Q{q}_resonator"] = (6.1 + 0.1 * i) * tunits.units.GHz
 
     # create seqeunce

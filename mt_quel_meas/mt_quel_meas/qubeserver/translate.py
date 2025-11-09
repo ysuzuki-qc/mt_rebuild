@@ -44,6 +44,10 @@ def _get_awg_channel_to_dac_unit(
         if awg_channel not in awg_channel_to_dac_unit:
             box_port = _boxport_name(device, port_index, assign.instrument_const.port_type[port_index])
             awg_channel_to_dac_unit[awg_channel] = PhysicalUnitIdentifier(box_port, dac_index)
+
+        logger.info(
+            f"job translate | awg channel assign | seq-ch: {sequence_channel} - awg-ch: {awg_channel}"
+        )
     return awg_channel_to_dac_unit
 
 
@@ -195,6 +199,9 @@ def _get_capture_channel_to_adc_unit(
         assert capture_channel not in capture_channel_to_adc_unit
         box_port = _boxport_name(device, port_index, assign.instrument_const.port_type[port_index])
         capture_channel_to_adc_unit[capture_channel] = PhysicalUnitIdentifier(box_port, mux_index)
+        logger.info(
+            f"job translate | capture channel assign | seq-ch: {sequence_channel} - cap-ch: {capture_channel}"
+        )
     return capture_channel_to_adc_unit
 
 

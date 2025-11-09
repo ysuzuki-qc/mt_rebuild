@@ -265,6 +265,7 @@ class JobExecutorQubeServer:
         self._update_shot(job.awg_channel_to_dac_unit, job.acquisition_config)
 
         # update AWG
+        # depend seq/freq_shift
         self._update_waveform(job.awg_channel_to_dac_unit, job.awg_channel_to_waveform, job.acquisition_config)
         self._update_FNCO_frequency(job.awg_channel_to_dac_unit, job.awg_channel_to_FNCO_frequency)
 
@@ -279,9 +280,10 @@ class JobExecutorQubeServer:
             job.acquisition_config.acquisition_duration,
         )
         self._update_FIR_coefficients(job.capture_channel_to_adc_unit, job.capture_channel_to_FIR_coefficients)
-        self._update_averaging_window_coefficients(
-            job.capture_channel_to_adc_unit, job.capture_channel_to_averaging_window_coefficients
-        )
+        if job.acquisition_config.flag_average_waveform:
+            self._update_averaging_window_coefficients(
+                job.capture_channel_to_adc_unit, job.capture_channel_to_averaging_window_coefficients
+            )
 
         # measurement
         self._upload_parameters(job.awg_channel_to_dac_unit)
