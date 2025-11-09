@@ -5,11 +5,11 @@ from typing import Literal
 import numpy as np
 import labrad
 from mt_util.tunits_util import FrequencyType, TimeType
-from mt_quel_meas.labrad.labrad_job import JobLabrad, PhysicalUnitIdentifier, AcquisitionConfigLabrad
+from mt_quel_meas.qubeserver.job import JobQubeServer, PhysicalUnitIdentifier, AcquisitionConfigQubeServer
 
 logger = getLogger(__name__)
 
-class JobExecutorLabrad:
+class JobExecutorQubeServer:
     def __init__(self) -> None:
         # Assume hostname and password are provided by environment value LABRADHOST and LABRADPASSWORD for safety.
         self._connection = labrad.connect()
@@ -17,13 +17,13 @@ class JobExecutorLabrad:
             raise ValueError("Qube server is not running")
         self._qube = self._connection.qube_server
 
-    def _update_common_config(self, acquisition_config: AcquisitionConfigLabrad) -> None:
+    def _update_common_config(self, acquisition_config: AcquisitionConfigQubeServer) -> None:
         self._qube.daq_timeout(acquisition_config.acquisition_timeout["ns"] * labrad.units.ns)
         logger.info(f"set daq_timeout | v: {acquisition_config.acquisition_timeout}")
         self._qube.daq_synchronization_delay(acquisition_config.acquisition_synchronization_delay["ns"] * labrad.units.ns)
         logger.info(f"set daq_synchronizatoin_delay | v: {acquisition_config.acquisition_synchronization_delay}")
 
-    def _update_waveform(self, awg_channel_to_dac_unit: dict[str, PhysicalUnitIdentifier], awg_channel_to_waveform: dict[str, np.ndarray], acquisition_config: AcquisitionConfigLabrad) -> None:
+    def _update_waveform(self, awg_channel_to_dac_unit: dict[str, PhysicalUnitIdentifier], awg_channel_to_waveform: dict[str, np.ndarray], acquisition_config: AcquisitionConfigQubeServer) -> None:
         for channel, waveform in awg_channel_to_waveform.items():
             physical_unit = awg_channel_to_dac_unit[channel]
             self._qube.select_device(physical_unit.box_port)
@@ -32,7 +32,7 @@ class JobExecutorLabrad:
             self._qube.upload_waveform([waveform], [physical_unit.unit_index])
             logger.info(f"set waveform | ch: {channel}, len: {len(waveform)}")
 
-    def _update_shot(self, awg_channel_to_dac_unit: dict[str, PhysicalUnitIdentifier], acquisition_config: AcquisitionConfigLabrad) -> None:
+    def _update_shot(self, awg_channel_to_dac_unit: dict[str, PhysicalUnitIdentifier], acquisition_config: AcquisitionConfigQubeServer) -> None:
         for channel, physical_unit in awg_channel_to_dac_unit.items():
             self._qube.select_device(physical_unit.box_port)
             self._qube.shots(acquisition_config.num_shot)
@@ -104,7 +104,7 @@ class JobExecutorLabrad:
             self._qube.acquisition_window_coefficients(physical_unit.unit_index, window_coefficients)
             logger.info(f"set averaging window coefs | ch: {channel}, len: {len(window_coefficients)}")
 
-    def _get_acquisition_mode(self, acquisition_config: AcquisitionConfigLabrad) -> str:
+    def _get_acquisition_mode(self, acquisition_config: AcquisitionConfigQubeServer) -> str:
         averaging_waveform = acquisition_config.flag_average_waveform
         averaging_shots = acquisition_config.flag_average_shots
         if averaging_waveform and averaging_shots:
@@ -121,7 +121,7 @@ class JobExecutorLabrad:
             acquisition_mode = "2"
         return acquisition_mode
 
-    def _upload_parameters(self, awg_channel_to_dac_unit: dict[str, PhysicalUnitIdentifier], acquisition_config: AcquisitionConfigLabrad) -> None:
+    def _upload_parameters(self, awg_channel_to_dac_unit: dict[str, PhysicalUnitIdentifier], acquisition_config: AcquisitionConfigQubeServer) -> None:
         acquisition_mode = self._get_acquisition_mode(acquisition_config)
         for channel, physical_unit in awg_channel_to_dac_unit.items():
             self._qube.select_device(physical_unit.box_port)
@@ -159,7 +159,7 @@ class JobExecutorLabrad:
             logger.info(f"download waveform | ch: {channel} num_window: {len(capture_points)} waveform_shape: {waveform.shape}")
         return result
 
-    def do_measurement(self, job: JobLabrad) -> dict[str, np.ndarray]:
+    def do_measurement(self, job: JobQubeServer) -> dict[str, np.ndarray]:
         # config general values
         self._update_common_config(job.acquisition_config)
         self._update_shot(job.awg_channel_to_dac_unit ,job.acquisition_config)

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from tunits.units import us, ms
 import numpy as np
 from mt_util.tunits_util import FrequencyType, TimeType
-from mt_quel_meas.quelware.quelware_job import QuelwareJob, ChannelIdentifier
+from mt_quel_meas.quelware.job import JobQuelware, ChannelIdentifier
 
 
 try:
@@ -82,7 +82,7 @@ if __import_success:
                 result.append( (box_name, self.box_dict[box_name], capture_units[box_name], awg_units[box_name]))
             return result
 
-        def do_measurement(self, job: QuelwareJob) -> dict[str, np.ndarray]:
+        def do_measurement(self, job: JobQuelware) -> dict[str, np.ndarray]:
             if job.ID_to_waveform is not None:
                 self._update_waveform(job.ID_to_box_port_dac, job.ID_to_waveform)
             if job.ID_to_NCO_frequency is not None:

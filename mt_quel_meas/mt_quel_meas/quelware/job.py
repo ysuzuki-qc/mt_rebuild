@@ -5,7 +5,7 @@ from mt_util.tunits_util import TimeType, FrequencyType
 
 
 @dataclass(frozen=True, slots=True)
-class AcquisitionConfig:
+class AcquisitionConfigQuelware:
     num_shot: int = 1000
     repetition_margin: TimeType = 100 * us
     acquisition_duration: TimeType = 1920 * us
@@ -22,9 +22,9 @@ class ChannelIdentifier:
     dac: int
 
 @dataclass(frozen=True, slots=True)
-class QuelwareJob:
+class JobQuelware:
     # BOX - Port - DAC
-    acquisition_config: AcquisitionConfig
+    acquisition_config: AcquisitionConfigQuelware
     ID_to_box_port_dac: dict[str, ChannelIdentifier]
 
     # waveform setting

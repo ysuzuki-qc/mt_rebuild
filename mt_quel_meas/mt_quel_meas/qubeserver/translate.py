@@ -8,7 +8,7 @@ from mt_quel_util.mod_demod import modulate_waveform, modulate_averaging_window
 from mt_quel_util.acq_window_shift import adjust_acquisition_window_position, adjust_averaging_window
 from mt_quel_util.constant import InstrumentConstantQuEL
 from mt_quel_meas.job import Job, TranslationInfo
-from mt_quel_meas.labrad.labrad_job import JobLabrad, PhysicalUnitIdentifier, AcquisitionConfigLabrad
+from mt_quel_meas.qubeserver.job import JobQubeServer, PhysicalUnitIdentifier, AcquisitionConfigQubeServer
 
 
 def _box_port_name(device_name: str, port_index: int) -> str:
@@ -104,12 +104,12 @@ def _get_boxport_to_LO_frequency(mux_result: MultiplexingResult, translate: Tran
     for device in mux_result.CNCO_setting:
         for port_index in mux_result.CNCO_setting[device]:
             boxport = _box_port_name(device, port_index)
-            # TODO: check with port index
-            if "readout" in boxport:
+            port_type = translate.instrument_const.port_type[port_index]
+            if port_type == "ReadOut":
                 boxport_to_LO_frequency[boxport] = translate.instrument_const.LO_freq_resonator
-            elif "control" in boxport:
+            elif port_type == "Control":
                 boxport_to_LO_frequency[boxport] = translate.instrument_const.LO_freq_qubit
-            elif "pump" in boxport:
+            elif port_type == "Pump":
                 boxport_to_LO_frequency[boxport] = translate.instrument_const.LO_freq_jpa
             else:
                 raise ValueError(f"Unknown boxport type: {boxport}")
@@ -120,15 +120,15 @@ def _get_boxport_to_LO_sideband(mux_result: MultiplexingResult, translate: Trans
     for device in mux_result.CNCO_setting:
         for port_index in mux_result.CNCO_setting[device]:
             boxport = _box_port_name(device, port_index)
-            # TODO: check with port index
-            if "readout" in boxport:
+            port_type = translate.instrument_const.port_type[port_index]
+            if port_type == "ReadOut":
                 boxport_to_LO_sideband[boxport] = translate.instrument_const.LO_sideband_resonator
-            elif "control" in boxport:
+            elif port_type == "Control":
                 boxport_to_LO_sideband[boxport] = translate.instrument_const.LO_sideband_qubit
-            elif "pump" in boxport:
+            elif port_type == "Pump":
                 boxport_to_LO_sideband[boxport] = translate.instrument_const.LO_sideband_jpa
             else:
-                raise ValueError(f"Unknown boxport type: {boxport}")
+                raise ValueError(f"Unknown port type: {port_type} for dev: {device} port: {port_index}")
     return boxport_to_LO_sideband
 
 
@@ -218,7 +218,7 @@ def _get_capture_channel_to_averaging_window_coefficients(
         capture_channel_to_averaging_window_coefficients[capture_channel] = adjusted_modulated_averaging_window_coefficients
     return capture_channel_to_averaging_window_coefficients
 
-def translate_job_labrad(job: Job, translate: TranslationInfo) -> JobLabrad:
+def translate_job_qube_server(job: Job, translate: TranslationInfo) -> JobQubeServer:
     # create waveform and capture points
     ## get waveform
     waveform_duration = job.sequence.get_duration(job.sequence_config, job.acquisition_config.acquisition_duration["ns"]) * ns
@@ -240,6 +240,8 @@ def translate_job_labrad(job: Job, translate: TranslationInfo) -> JobLabrad:
     num_sample_waveform = np.ceil(waveform_length/delta_time).astype(int)
     time_slots_ns = np.arange(num_sample_waveform) * delta_time["ns"]
     sequence_channel_to_waveform, sequence_channel_to_capture_points_ns = job.sequence.get_waveform(time_slots_ns, job.sequence_config)
+
+    # convert float values to TimeType items
     sequence_channel_to_capture_points: dict[str, list[TimeType]] = {}
     for sequence_channel, capture_points_ns in sequence_channel_to_capture_points_ns.items():
         sequence_channel_to_capture_points[sequence_channel] = [capture_point_ns*ns for capture_point_ns in capture_points_ns]
@@ -264,14 +266,16 @@ def translate_job_labrad(job: Job, translate: TranslationInfo) -> JobLabrad:
         mux_result.channel_to_residual_frequency,
         translate.instrument_const)
 
-    # create DAC -> FNCO
+    # create DAC -> FNCO frequency
     awg_channel_to_FNCO_frequency = _get_awg_channel_to_FNCO_frequency(mux_result)
 
-    # create BoxPort -> CNCO
+    # create BoxPort -> CNCO frequency
     boxport_to_CNCO_frequency = _get_boxport_to_CNCO_frequency(mux_result)
 
+    # create BoxPort -> LO frequency
     boxport_to_LO_frequency = _get_boxport_to_LO_frequency(mux_result, translate)
 
+    # create BoxPort -> LO sideband
     boxport_to_LO_sideband = _get_boxport_to_LO_sideband(mux_result, translate)
 
 
@@ -319,8 +323,9 @@ def translate_job_labrad(job: Job, translate: TranslationInfo) -> JobLabrad:
         mux_result.channel_to_residual_frequency,
         capture_channel_to_preceding_time,
         translate.instrument_const,)
-    
-    acquisition_config_labrad = AcquisitionConfigLabrad(
+
+    # create QubeServer job
+    acquisition_config_qube_server = AcquisitionConfigQubeServer(
         num_shot = job.acquisition_config.num_shot,
         repetition_time = repetition_time,
         waveform_length = waveform_length,
@@ -331,8 +336,8 @@ def translate_job_labrad(job: Job, translate: TranslationInfo) -> JobLabrad:
         flag_average_shots = job.acquisition_config.flag_average_shots,
     )
 
-    job_labrad = JobLabrad(
-        acquisition_config=acquisition_config_labrad,
+    job_qube_server = JobQubeServer(
+        acquisition_config = acquisition_config_qube_server,
         awg_channel_to_dac_unit = awg_channel_to_dac_unit,
         awg_channel_to_waveform = awg_channel_to_waveform,
         awg_channel_to_FNCO_frequency = awg_channel_to_FNCO_frequency,
@@ -347,6 +352,6 @@ def translate_job_labrad(job: Job, translate: TranslationInfo) -> JobLabrad:
         capture_channel_to_FIR_coefficients = capture_channel_to_FIR_coefficients,
         capture_channel_to_averaging_window_coefficients = capture_channel_to_averaging_window_coefficients,
     )
-    return job_labrad
+    return job_qube_server
 
 

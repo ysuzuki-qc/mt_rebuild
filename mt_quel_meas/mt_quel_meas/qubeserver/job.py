@@ -5,7 +5,7 @@ from tunits.units import ns, us, ms
 from mt_util.tunits_util import FrequencyType, TimeType
 
 @dataclass(frozen=True, slots=True)
-class AcquisitionConfigLabrad:
+class AcquisitionConfigQubeServer:
     num_shot: int
     waveform_length: TimeType
     repetition_time: TimeType
@@ -21,9 +21,9 @@ class PhysicalUnitIdentifier:
     unit_index: int
 
 @dataclass(frozen=True, slots=True)
-class JobLabrad:
+class JobQubeServer:
     # common config
-    acquisition_config: AcquisitionConfigLabrad
+    acquisition_config: AcquisitionConfigQubeServer
 
     awg_channel_to_dac_unit: dict[str, PhysicalUnitIdentifier]
     awg_channel_to_waveform: dict[str, np.ndarray]

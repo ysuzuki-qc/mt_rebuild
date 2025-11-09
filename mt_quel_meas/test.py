@@ -41,9 +41,9 @@ def example1():
     import pprint
     from mt_quel_meas.meas_1Q import create_1Q_objects
     from mt_quel_meas.job import Job, AcquisitionConfig
-    from mt_quel_meas.labrad.labrad_job_translate import translate_job_labrad
-    from mt_quel_meas.labrad.labrad_job_execute import JobExecutorLabrad
-    from mt_quel_meas.labrad.labrad_job_extract import extract_job_result
+    from mt_quel_meas.qubeserver.translate import translate_job_qube_server
+    from mt_quel_meas.qubeserver.execute import JobExecutorQubeServer
+    from mt_quel_meas.qubeserver.extract import extract_dataset
     from mt_quel_util.constant import CONST_QuEL1SE_LOW_FREQ
     target_qubit_list = [0,1]
     sequence,  channel_to_frequency, channel_to_frequency_shift, channel_to_averaging_window, translate = create_1Q_objects(target_qubit_list, wiring_dict_16Q, CONST_QuEL1SE_LOW_FREQ)
@@ -58,18 +58,18 @@ def example1():
     acquisition_config = AcquisitionConfig()
     job = Job(sequence, sequence_config,  channel_to_frequency, channel_to_frequency_shift, channel_to_averaging_window, acquisition_config)
 
-    # convert job to labrad form, execute it, and convert results
-    job_labrad = translate_job_labrad(job, translate)
-    pprint.pprint(job_labrad.acquisition_config)
-    pprint.pprint(job_labrad.awg_channel_to_dac_unit)
-    pprint.pprint(job_labrad.awg_channel_to_waveform.keys())
-    pprint.pprint(job_labrad.awg_channel_to_FNCO_frequency)
-    pprint.pprint(job_labrad.boxport_to_CNCO_frequency)
-    pprint.pprint(job_labrad.capture_channel_to_adc_unit)
-    pprint.pprint(job_labrad.capture_channel_to_capture_point)
-    pprint.pprint(job_labrad.capture_channel_to_preceding_time)
-    pprint.pprint(job_labrad.capture_channel_to_FIR_coefficients)
-    pprint.pprint(job_labrad.capture_channel_to_averaging_window_coefficients.keys())
+    # convert job to qube_server form, execute it, and convert results
+    job_qube_server = translate_job_qube_server(job, translate)
+    pprint.pprint(job_qube_server.acquisition_config)
+    pprint.pprint(job_qube_server.awg_channel_to_dac_unit)
+    pprint.pprint(job_qube_server.awg_channel_to_waveform.keys())
+    pprint.pprint(job_qube_server.awg_channel_to_FNCO_frequency)
+    pprint.pprint(job_qube_server.boxport_to_CNCO_frequency)
+    pprint.pprint(job_qube_server.capture_channel_to_adc_unit)
+    pprint.pprint(job_qube_server.capture_channel_to_capture_point)
+    pprint.pprint(job_qube_server.capture_channel_to_preceding_time)
+    pprint.pprint(job_qube_server.capture_channel_to_FIR_coefficients)
+    pprint.pprint(job_qube_server.capture_channel_to_averaging_window_coefficients.keys())
 
 
 def example2():
@@ -78,9 +78,9 @@ def example2():
     from tunits.units import GHz
     from mt_quel_meas.meas_2Q import create_2Q_objects
     from mt_quel_meas.job import Job, AcquisitionConfig
-    from mt_quel_meas.labrad.labrad_job_translate import translate_job_labrad
-    from mt_quel_meas.labrad.labrad_job_execute import JobExecutorLabrad
-    from mt_quel_meas.labrad.labrad_job_extract import extract_job_result
+    from mt_quel_meas.qubeserver.translate import translate_job_qube_server
+    from mt_quel_meas.qubeserver.execute import JobExecutorQubeServer
+    from mt_quel_meas.qubeserver.extract import extract_dataset
     from mt_quel_util.constant import CONST_QuEL1SE_LOW_FREQ
     
     target_qubit_list = [0]
@@ -100,11 +100,11 @@ def example2():
     acquisition_config.flag_average_waveform = True
     job = Job(sequence, sequence_config,  channel_to_frequency, channel_to_frequency_shift, channel_to_averaging_window, acquisition_config)
 
-    # convert job to labrad form, execute it, and convert results
-    job_labrad = translate_job_labrad(job, translate)
-    executor = JobExecutorLabrad()
-    result_labrad = executor.do_measurement(job_labrad)
-    # result = extract_job_result(job, job_labrad, translate, result_labrad)
+    # convert job to qube_server form, execute it, and convert results
+    job_qube_server = translate_job_qube_server(job, translate)
+    executor = JobExecutorQubeServer()
+    result_qube_server = executor.do_measurement(job_qube_server)
+    # result = extract_dataset(job, job_qube_server, translate, result_qube_server)
 
 def example3():
     # Create a job that is independent of executor and multiplexing details
@@ -112,9 +112,9 @@ def example3():
     from tunits.units import GHz
     from mt_quel_meas.meas_2Q import create_2Q_objects
     from mt_quel_meas.job import Job, AcquisitionConfig
-    from mt_quel_meas.labrad.labrad_job_translate import translate_job_labrad
-    from mt_quel_meas.labrad.labrad_job_execute import JobExecutorLabrad
-    from mt_quel_meas.labrad.labrad_job_extract import extract_job_result
+    from mt_quel_meas.qubeserver.translate import translate_job_qube_server
+    from mt_quel_meas.qubeserver.execute import JobExecutorQubeServer
+    from mt_quel_meas.qubeserver.extract import extract_dataset
     from mt_quel_util.constant import CONST_QuEL1SE_LOW_FREQ
     
     target_qubit_list = [0,1]
@@ -139,11 +139,11 @@ def example3():
     acquisition_config.flag_average_waveform = True
     job = Job(sequence, sequence_config,  channel_to_frequency, channel_to_frequency_shift, channel_to_averaging_window, acquisition_config)
 
-    # convert job to labrad form, execute it, and convert results
-    job_labrad = translate_job_labrad(job, translate)
-    executor = JobExecutorLabrad()
-    result_labrad = executor.do_measurement(job_labrad)
-    # result = extract_job_result(job, job_labrad, translate, result_labrad)
+    # convert job to qube_server form, execute it, and convert results
+    job_qube_server = translate_job_qube_server(job, translate)
+    executor = JobExecutorQubeServer()
+    result_qube_server = executor.do_measurement(job_qube_server)
+    # result = extract_dataset(job, job_qube_server, translate, result_qube_server)
 
 def example4():
     # Create a job that is independent of executor and multiplexing details
@@ -151,9 +151,9 @@ def example4():
     from tunits.units import GHz
     from mt_quel_meas.meas_2Q import create_2Q_objects
     from mt_quel_meas.job import Job, AcquisitionConfig
-    from mt_quel_meas.labrad.labrad_job_translate import translate_job_labrad
-    from mt_quel_meas.labrad.labrad_job_execute import JobExecutorLabrad
-    from mt_quel_meas.labrad.labrad_job_extract import extract_job_result
+    from mt_quel_meas.qubeserver.translate import translate_job_qube_server
+    from mt_quel_meas.qubeserver.execute import JobExecutorQubeServer
+    from mt_quel_meas.qubeserver.extract import extract_dataset
     from mt_quel_util.constant import CONST_QuEL1SE_LOW_FREQ
     
     target_qubit_list = [0,1,4]
@@ -180,11 +180,11 @@ def example4():
     acquisition_config.flag_average_waveform = True
     job = Job(sequence, sequence_config,  channel_to_frequency, channel_to_frequency_shift, channel_to_averaging_window, acquisition_config)
 
-    # convert job to labrad form, execute it, and convert results
-    job_labrad = translate_job_labrad(job, translate)
-    executor = JobExecutorLabrad()
-    result_labrad = executor.do_measurement(job_labrad)
-    # result = extract_job_result(job, job_labrad, translate, result_labrad)
+    # convert job to qube_server form, execute it, and convert results
+    job_qube_server = translate_job_qube_server(job, translate)
+    executor = JobExecutorQubeServer()
+    result_qube_server = executor.do_measurement(job_qube_server)
+    # result = extract_dataset(job, job_qube_server, translate, result_qube_server)
 
 
 def example5():
@@ -193,9 +193,9 @@ def example5():
     from tunits.units import GHz
     from mt_quel_meas.meas_2Q import create_2Q_objects
     from mt_quel_meas.job import Job, AcquisitionConfig
-    from mt_quel_meas.labrad.labrad_job_translate import translate_job_labrad
-    from mt_quel_meas.labrad.labrad_job_execute import JobExecutorLabrad
-    from mt_quel_meas.labrad.labrad_job_extract import extract_job_result
+    from mt_quel_meas.qubeserver.translate import translate_job_qube_server
+    from mt_quel_meas.qubeserver.execute import JobExecutorQubeServer
+    from mt_quel_meas.qubeserver.extract import extract_dataset
     from mt_quel_util.constant import CONST_QuEL1SE_LOW_FREQ
     
     target_qubit_list = [0,]
@@ -217,11 +217,11 @@ def example5():
     acquisition_config.flag_average_waveform = True
     job = Job(sequence, sequence_config,  channel_to_frequency, channel_to_frequency_shift, channel_to_averaging_window, acquisition_config)
 
-    # convert job to labrad form, execute it, and convert results
-    job_labrad = translate_job_labrad(job, translate)
-    executor = JobExecutorLabrad()
-    result_labrad = executor.do_measurement(job_labrad)
-    # result = extract_job_result(job, job_labrad, translate, result_labrad)
+    # convert job to qube_server form, execute it, and convert results
+    job_qube_server = translate_job_qube_server(job, translate)
+    executor = JobExecutorQubeServer()
+    result_qube_server = executor.do_measurement(job_qube_server)
+    # result = extract_dataset(job, job_qube_server, translate, result_qube_server)
 
 # example1()
 # example2()
