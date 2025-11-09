@@ -1,3 +1,4 @@
+from typing import Literal
 import numpy as np
 from tunits.units import ns
 from mt_util.tunits_util import FrequencyType, TimeType
@@ -114,8 +115,8 @@ def _get_boxport_to_LO_frequency(mux_result: MultiplexingResult, translate: Tran
                 raise ValueError(f"Unknown boxport type: {boxport}")
     return boxport_to_LO_frequency
 
-def _get_boxport_to_LO_sideband(mux_result: MultiplexingResult, translate: TranslationInfo) -> dict[str, str]:
-    boxport_to_LO_sideband: dict[str, FrequencyType] = {}
+def _get_boxport_to_LO_sideband(mux_result: MultiplexingResult, translate: TranslationInfo) -> dict[str, Literal["USB", "LSB", "Direct"]]:
+    boxport_to_LO_sideband: dict[str, Literal["USB", "LSB", "Direct"]] = {}
     for device in mux_result.CNCO_setting:
         for port_index in mux_result.CNCO_setting[device]:
             boxport = _box_port_name(device, port_index)
@@ -165,10 +166,12 @@ def _get_capture_channel_to_adc_unit(translate: TranslationInfo, sequence_channe
 
 def _get_capture_channel_to_capture_points_and_preceding_time(
         sequence_channel_to_capture_channel: dict[str, str],
-        sequence_channel_to_capture_points: dict[str, list[float]],
-        instrument_const: InstrumentConstantQuEL) -> tuple[dict[str, list[float]], dict[str, TimeType]]:
-    capture_channel_to_capture_points: dict[str, list[float]] = {}
+        sequence_channel_to_capture_points: dict[str, list[TimeType]],
+        instrument_const: InstrumentConstantQuEL) -> tuple[dict[str, list[TimeType]], dict[str, TimeType]]:
+
+    capture_channel_to_capture_points: dict[str, list[TimeType]] = {}
     capture_channel_to_preceding_time: dict[str, TimeType] = {}
+
     for sequence_channel, capture_channel in sequence_channel_to_capture_channel.items():
         capture_points = sequence_channel_to_capture_points[sequence_channel]
         adjusted_capture_points, preceding_time = adjust_acquisition_window_position(capture_points, instrument_const)
@@ -236,7 +239,10 @@ def translate_job_labrad(job: Job, translate: TranslationInfo) -> JobLabrad:
     delta_time = (1/translate.instrument_const.DACBB_sampling_freq)
     num_sample_waveform = np.ceil(waveform_length/delta_time).astype(int)
     time_slots_ns = np.arange(num_sample_waveform) * delta_time["ns"]
-    sequence_channel_to_waveform, sequence_channel_to_capture_points = job.sequence.get_waveform(time_slots_ns, job.sequence_config)
+    sequence_channel_to_waveform, sequence_channel_to_capture_points_ns = job.sequence.get_waveform(time_slots_ns, job.sequence_config)
+    sequence_channel_to_capture_points: dict[str, list[TimeType]] = {}
+    for sequence_channel, capture_points_ns in sequence_channel_to_capture_points_ns.items():
+        sequence_channel_to_capture_points[sequence_channel] = [capture_point_ns*ns for capture_point_ns in capture_points_ns]
 
     # TODO: modify sequence_channel_to_frequency to make CR frequency refer to qubit frequency
     mux_result = get_multiplex_config(job.sequence_channel_to_frequency, translate.sequence_channel_to_device, translate.sequence_channel_to_port_index, translate.instrument_const)

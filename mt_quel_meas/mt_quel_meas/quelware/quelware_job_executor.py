@@ -23,7 +23,7 @@ if __import_success:
                 box.reconnect()
                 self.box_dict[name] = box
 
-        def _update_waveform(self, ID_to_box_port_dac: dict[str, ChannelIdentifier], ID_to_waveform: dict[str, FrequencyType]):
+        def _update_waveform(self, ID_to_box_port_dac: dict[str, ChannelIdentifier], ID_to_waveform: dict[str, np.ndarray]):
             waveform_name = "waveform"
             for ID, waveform in ID_to_waveform.items():
                 channel = ID_to_box_port_dac[ID]
@@ -56,7 +56,7 @@ if __import_success:
                 box = self.box_dict[channel.box]
                 box.config_runit(channel.port, channel.dac, capture_param=capture_param)
 
-        def _get_relevant_box_list(self, ID_to_box_port_dac: dict[str, ChannelIdentifier]) -> list[str]:
+        def _get_relevant_box_list(self, ID_to_box_port_dac: dict[str, ChannelIdentifier]) -> list[tuple[str, Quel1Box, list, list]]:
             # gather unique box name list
             box_name_list = []
             for channel in ID_to_box_port_dac.values():
@@ -69,30 +69,31 @@ if __import_success:
             for box_name in box_name_list:
                 capture_units[box_name] = []
                 awg_units[box_name] = []
-            for box_name, port, dac in ID_to_box_port_dac.values():
-                if port == 0:
-                    capture_units[box_name].append((port, dac))
+            for unit in ID_to_box_port_dac.values():
+                if unit.port == 0:
+                    capture_units[unit.box].append((unit.port, unit.dac))
                 else:
-                    awg_units[box_name].append((port, dac))
+                    awg_units[unit.box].append((unit.port, unit.dac))
 
             # create return objects
             result = []
-            for box_name, port, dac in ID_to_box_port_dac.values():
+            for unit in ID_to_box_port_dac.values():
+                box_name = unit.box
                 result.append( (box_name, self.box_dict[box_name], capture_units[box_name], awg_units[box_name]))
             return result
 
-        def do_measurement(self, job: QuelwareJob):
+        def do_measurement(self, job: QuelwareJob) -> dict[str, np.ndarray]:
             if job.ID_to_waveform is not None:
                 self._update_waveform(job.ID_to_box_port_dac, job.ID_to_waveform)
             if job.ID_to_NCO_frequency is not None:
                 self._update_NCO_frequency(job.ID_to_box_port_dac, job.ID_to_NCO_frequency)
 
-            box_list: list[tuple[str, Quel1Box, tuple, tuple]] = self._get_relevant_box_list(job.ID_to_box_port_dac)
+            box_list: list[tuple[str, Quel1Box, list, list]] = self._get_relevant_box_list(job.ID_to_box_port_dac)
             
 
             # determine synchronize time
             synchronization_delay = job.acquisition_config.acquisition_synchronization_delay["ns"]
-            current_time = box_list[0].get_current_timecounter()
+            current_time = box_list[0][1].get_current_timecounter()
             synchronization_time = current_time + synchronization_delay
 
             # trigger all box
@@ -108,12 +109,13 @@ if __import_success:
                 awg_task.result(timeout=job.acquisition_config.acquisition_timeout["ns"])
 
             # wait for finish capture tasks and obtain waveforms
-            result_data = {}
+            result_data: dict[str, np.ndarray] = {}
             for box_info, capture_task in zip(box_list, capture_task_list):
                 box_name, _, box_capture_units,_ = box_info
                 result_dict = capture_task.result()
                 for capture_unit in box_capture_units:
                     wavedata = result_dict[capture_unit].as_wave_dict()
+                    result_data[box_name] = wavedata
             return wavedata
 
 

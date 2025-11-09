@@ -10,29 +10,27 @@ class NoteEncoder(json.JSONEncoder):
     @pydantic.validate_call
     def default(self, obj: Any) -> Any:
         if isinstance(obj, tunits.Value):
-            return {"__tunits_value__": True, "value": obj.value, "unit": obj.units}
+            return {"__tunits__value__": True, "value": obj.value, "unit": obj.units}
         if isinstance(obj, tunits.ValueArray):
-            return {"__tunits_value_array__": True, "value_array": obj.value, "unit": obj.units}
+            return {"__tunits__valuearray__": True, "value": obj.value, "unit": obj.units}
         if isinstance(obj, Note):
             return obj._internal_dict
         if isinstance(obj, np.ndarray):
             if np.iscomplexobj(obj):
-                return {"__numpy_complex__": True, "real": np.real(obj).tolist(), "imag": np.imag(obj).tolist()}
+                return {"__numpy__complex__": True, "real": np.real(obj).tolist(), "imag": np.imag(obj).tolist()}
             else:
-                return {"__numpy_real__": True, "value": obj.tolist()}
+                return {"__numpy__real__": True, "value": obj.tolist()}
         return super().default(obj)
 
 @pydantic.validate_call
 def _note_object_hook(obj: Any) -> Any:
-    if isinstance(obj, dict) and "__tunits_value__" in obj:
+    if isinstance(obj, dict) and "__tunits__value__" in obj:
         return tunits.Value(obj["value"], obj["unit"])
-    if isinstance(obj, dict) and "__tunits_value_array__" in obj:
-        return tunits.ValueArray(obj["value_array"], obj["unit"])
-    if isinstance(obj, dict) and "__rewind_note__" in obj:
-        return Note.from_json_str(obj["dumps"])
-    if isinstance(obj, dict) and "__numpy_real__" in obj:
+    if isinstance(obj, dict) and "__tunits__valuearray__" in obj:
+        return tunits.ValueArray(obj["value"], obj["unit"])
+    if isinstance(obj, dict) and "__numpy__real__" in obj:
         return np.array(obj["value"])
-    if isinstance(obj, dict) and "__numpy_complex__" in obj:
+    if isinstance(obj, dict) and "__numpy__complex__" in obj:
         return np.array(obj["real"]) + 1j * np.array(obj["imag"])
     return obj
 

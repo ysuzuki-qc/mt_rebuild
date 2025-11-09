@@ -34,7 +34,7 @@ class JobLabrad:
     boxport_to_LO_sideband: dict[str, Literal["USB", "LSB", "Direct"]]
 
     capture_channel_to_adc_unit: dict[str, PhysicalUnitIdentifier]
-    capture_channel_to_capture_point: dict[str, list[float]]
+    capture_channel_to_capture_point: dict[str, list[TimeType]]
     capture_channel_to_preceding_time: dict[str, TimeType]
     capture_channel_to_FIR_coefficients: dict[str, np.ndarray]
     capture_channel_to_averaging_window_coefficients: dict[str, np.ndarray]

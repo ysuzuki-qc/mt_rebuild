@@ -10,7 +10,7 @@ def get_gaussian_FIR_coefficients(frequency: FrequencyType, constant: Instrument
         raise ValueError(f"Baseband frequency too large, ADCBB_sampling_freq: {ADC_BB} bb_frequency: {frequency}")
 
     band_step = ADC_BB/num_band
-    band_idx = int(np.round(frequency/band_step))
+    band_idx = np.rint(frequency/band_step).astype(int)
     band_center = band_step * band_idx
 
     x = (np.arange(num_band)-(num_band-1)/2) / ADC_BB['GHz']

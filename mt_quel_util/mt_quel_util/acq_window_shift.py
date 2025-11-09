@@ -10,19 +10,18 @@ def get_available_averaging_window_sample(constant: InstrumentConstantQuEL) -> i
     num_sample_window_available = np.rint((constant.ACQ_window_length_max - start_window_step)*ADC_decimated_freq).astype(int).item()
     return num_sample_window_available
 
-def adjust_acquisition_window_position(acquisition_point_list: list[float], constant: InstrumentConstantQuEL) -> tuple[list[float], TimeType]:
+def adjust_acquisition_window_position(acquisition_point_list: list[TimeType], constant: InstrumentConstantQuEL) -> tuple[list[TimeType], TimeType]:
     if len(acquisition_point_list) == 0:
         raise ValueError("No acquisition window found")
-    start_window_time = (sorted(acquisition_point_list)[0]) * ns
+    start_window_time = sorted(acquisition_point_list)[0]
     start_window_step = constant.ACQ_first_window_position_timestep 
     decim_time_step = 1./constant.ADC_decimated_freq
         
-    preceding_time = start_window_time - np.floor(start_window_time["ns"]/start_window_step["ns"])*start_window_step
-    adjusted_acquisition_point_list: list[float] = []
-    for acq_point_ns in acquisition_point_list:
-        acq_point = acq_point_ns*ns
-        adjusted_acq_point = np.round((acq_point - preceding_time)/decim_time_step) * decim_time_step
-        adjusted_acquisition_point_list.append(adjusted_acq_point["ns"])
+    preceding_time: TimeType = start_window_time - np.floor(start_window_time["ns"]/start_window_step["ns"])*start_window_step
+    adjusted_acquisition_point_list: list[TimeType] = []
+    for acq_point in acquisition_point_list:
+        adjusted_acq_point = np.round((acq_point - preceding_time)["ns"]/decim_time_step["ns"]) * decim_time_step
+        adjusted_acquisition_point_list.append(adjusted_acq_point)
     return adjusted_acquisition_point_list, preceding_time
 
 def adjust_averaging_window(averaging_window: np.ndarray, preceding_time: TimeType, constant: InstrumentConstantQuEL) -> np.ndarray:

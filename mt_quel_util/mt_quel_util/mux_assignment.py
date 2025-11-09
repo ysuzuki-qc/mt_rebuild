@@ -90,7 +90,8 @@ def get_multiplex_config(channel_to_frequency: dict[str, FrequencyType], channel
 
 @pydantic.validate_call
 def approximate_frequency_by_step(freq: FrequencyType, step: FrequencyType) -> tuple[FrequencyType, FrequencyType]:
-    freq_approx = np.round(freq/step) * step
+    step_div: float = (freq/step)[""]
+    freq_approx = np.round(step_div) * step
     freq_residual = freq - freq_approx
     return freq_approx, freq_residual
 
@@ -105,7 +106,7 @@ def get_residual_frequency(freq_LO: FrequencyType, freq_CNCO: FrequencyType, fre
 
 @pydantic.validate_call
 def multiplex_port(channel_to_freq: dict[str, FrequencyType], freq_LO: FrequencyType, freq_NCO_step: FrequencyType, num_dac_channel: int, sideband: Literal["USB", "LSB", "Direct"], constant: InstrumentConstantQuEL) -> PortMultiplexing:
-    freq_mean = np.mean(list(channel_to_freq.values()))
+    freq_mean: FrequencyType = np.mean(list(channel_to_freq.values())) # type: ignore
     freq_CNCO, _ = approximate_frequency_by_step(get_residual_frequency(freq_LO, 0*GHz, 0*GHz, freq_mean, sideband), freq_NCO_step)
     channel_to_dac = get_frequency_group(channel_to_freq, freq_NCO_step/4, num_dac_channel)
     freq_FNCO_dict: dict[int, FrequencyType] = {}
@@ -116,7 +117,7 @@ def multiplex_port(channel_to_freq: dict[str, FrequencyType], freq_LO: Frequency
         if len(target_channel_list) == 0:
             continue
         target_frequency_list = [channel_to_freq[channel] for channel in target_channel_list]
-        freq_dac_mean = np.mean(target_frequency_list)
+        freq_dac_mean: FrequencyType = np.mean(target_frequency_list) # type: ignore
         freq_FNCO, _ = approximate_frequency_by_step(get_residual_frequency(freq_LO, freq_CNCO, 0*GHz, freq_dac_mean, sideband), freq_NCO_step)
         freq_FNCO_dict[dac_index] = freq_FNCO
         for channel in target_channel_list:

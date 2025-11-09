@@ -1,15 +1,14 @@
 from dataclasses import dataclass
 import numpy as np
 from tunits.units import us, ms
-from tunits import Time, Frequency
 from mt_util.tunits_util import TimeType, FrequencyType
 
 
 @dataclass(frozen=True, slots=True)
 class AcquisitionConfig:
     num_shot: int = 1000
-    repetition_margin: Time = 100 * us
-    acquisition_duration: Time = 1920 * us
+    repetition_margin: TimeType = 100 * us
+    acquisition_duration: TimeType = 1920 * us
     acquisition_delay: TimeType = 0 * us
     acquisition_timeout: TimeType = 5 * 1e6 * us
     acquisition_synchronization_delay: TimeType = 100 * ms
