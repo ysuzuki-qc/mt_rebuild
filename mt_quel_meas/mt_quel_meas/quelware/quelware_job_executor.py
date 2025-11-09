@@ -7,8 +7,8 @@ from mt_quel_meas.quelware.quelware_job import QuelwareJob, ChannelIdentifier
 
 
 try:
-    from e7awghal import AwgParam, CapParam, CapSection, WaveChunk
-    from quel_ic_config import Quel1Box, Quel1BoxType, Quel1PortType
+    from e7awghal import AwgParam, CapParam, CapSection, WaveChunk # pyright: ignore[reportMissingImports]
+    from quel_ic_config import Quel1Box, Quel1BoxType, Quel1PortType # pyright: ignore[reportMissingImports]
     __import_success = True
 except Exception:
     __import_success = False
