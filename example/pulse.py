@@ -336,10 +336,10 @@ def func7():
     plt.show()
 
 
-# func1()
-# func2()
-# func3()
-# func4()
-# func5()
-# func6()
+func1()
+func2()
+func3()
+func4()
+func5()
+func6()
 func7()
