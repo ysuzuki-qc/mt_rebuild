@@ -8,7 +8,7 @@ from mt_quel_util.demux_filter import get_gaussian_FIR_coefficients
 from mt_quel_util.mod_demod import modulate_waveform, modulate_averaging_window
 from mt_quel_util.acq_window_shift import adjust_capture_point_list, adjust_averaging_window
 from mt_quel_util.constant import InstrumentConstantQuEL
-from mt_quel_meas.job import Job, QuelAssignment
+from mt_quel_meas.job import Job, AssignmentQuel
 from mt_quel_meas.qubeserver.job import JobQubeServer, PhysicalUnitIdentifier, AcquisitionConfigQubeServer
 from mt_quel_meas.qubeserver.util import (
     _awg_channel_name,
@@ -21,7 +21,7 @@ from mt_quel_meas.qubeserver.util import (
 logger = getLogger(__name__)
 
 
-def _map_sequence_channel_to_awg_channel(assign: QuelAssignment, mux_result: MultiplexingResult) -> dict[str, str]:
+def _map_sequence_channel_to_awg_channel(assign: AssignmentQuel, mux_result: MultiplexingResult) -> dict[str, str]:
     sequence_channel_to_awg_channel: dict[str, str] = {}
     for sequence_channel in assign.sequence_channel_to_device:
         device = assign.sequence_channel_to_device[sequence_channel]
@@ -33,7 +33,7 @@ def _map_sequence_channel_to_awg_channel(assign: QuelAssignment, mux_result: Mul
 
 
 def _get_awg_channel_to_dac_unit(
-    assign: QuelAssignment, mux_result: MultiplexingResult
+    assign: AssignmentQuel, mux_result: MultiplexingResult
 ) -> dict[str, PhysicalUnitIdentifier]:
     awg_channel_to_dac_unit: dict[str, PhysicalUnitIdentifier] = {}
     for sequence_channel in assign.sequence_channel_to_device:
@@ -101,7 +101,7 @@ def _get_awg_channel_to_waveform(
 
 
 def _get_awg_channel_to_FNCO_frequency(
-    mux_result: MultiplexingResult, assign: QuelAssignment
+    mux_result: MultiplexingResult, assign: AssignmentQuel
 ) -> dict[str, FrequencyType]:
     awg_channel_to_FNCO_frequency: dict[str, FrequencyType] = {}
     for device, FNCO_port in mux_result.FNCO_setting.items():
@@ -114,7 +114,7 @@ def _get_awg_channel_to_FNCO_frequency(
     return awg_channel_to_FNCO_frequency
 
 
-def _get_boxport_to_CNCO_frequency(mux_result: MultiplexingResult, assign: QuelAssignment) -> dict[str, FrequencyType]:
+def _get_boxport_to_CNCO_frequency(mux_result: MultiplexingResult, assign: AssignmentQuel) -> dict[str, FrequencyType]:
     boxport_to_CNCO_frequency: dict[str, FrequencyType] = {}
     for device in mux_result.CNCO_setting:
         for port_index in mux_result.CNCO_setting[device]:
@@ -123,7 +123,7 @@ def _get_boxport_to_CNCO_frequency(mux_result: MultiplexingResult, assign: QuelA
     return boxport_to_CNCO_frequency
 
 
-def _get_boxport_to_LO_frequency(mux_result: MultiplexingResult, assign: QuelAssignment) -> dict[str, FrequencyType]:
+def _get_boxport_to_LO_frequency(mux_result: MultiplexingResult, assign: AssignmentQuel) -> dict[str, FrequencyType]:
     boxport_to_LO_frequency: dict[str, FrequencyType] = {}
     for device in mux_result.CNCO_setting:
         for port_index in mux_result.CNCO_setting[device]:
@@ -141,7 +141,7 @@ def _get_boxport_to_LO_frequency(mux_result: MultiplexingResult, assign: QuelAss
 
 
 def _get_boxport_to_LO_sideband(
-    mux_result: MultiplexingResult, assign: QuelAssignment
+    mux_result: MultiplexingResult, assign: AssignmentQuel
 ) -> dict[str, Literal["USB", "LSB", "Direct"]]:
     boxport_to_LO_sideband: dict[str, Literal["USB", "LSB", "Direct"]] = {}
     for device in mux_result.CNCO_setting:
@@ -160,7 +160,7 @@ def _get_boxport_to_LO_sideband(
 
 
 def _map_sequence_channel_to_capture_channel(
-    assign: QuelAssignment, mux_result: MultiplexingResult, sequence_channel_to_mux_index: dict[str, int]
+    assign: AssignmentQuel, mux_result: MultiplexingResult, sequence_channel_to_mux_index: dict[str, int]
 ) -> dict[str, str]:
     sequence_channel_to_capture_channel: dict[str, str] = {}
     for sequence_channel in assign.sequence_channel_to_device:
@@ -181,7 +181,7 @@ def _map_sequence_channel_to_capture_channel(
 
 
 def _get_capture_channel_to_adc_unit(
-    assign: QuelAssignment,
+    assign: AssignmentQuel,
     sequence_channel_to_capture_channel: dict[str, str],
     sequence_channel_to_mux_index: dict[str, int],
 ) -> dict[str, PhysicalUnitIdentifier]:
@@ -307,7 +307,7 @@ def _get_capture_channel_to_averaging_window_coefficients(
     return capture_channel_to_averaging_window_coefficients
 
 
-def translate_job_qube_server(job: Job, assign: QuelAssignment) -> JobQubeServer:
+def translate_job_qube_server(job: Job, assign: AssignmentQuel) -> JobQubeServer:
     # get waveform
     waveform_duration = (
         job.sequence.get_duration(job.sequence_config, job.acquisition_config.acquisition_duration["ns"]) * ns

@@ -1,7 +1,7 @@
 from logging import getLogger
 import numpy as np
 from mt_quel_util.mod_demod import demodulate_waveform, demodulate_averaged_sample
-from mt_quel_meas.job import Job, QuelAssignment
+from mt_quel_meas.job import Job, AssignmentQuel
 from mt_quel_meas.qubeserver.job import JobQubeServer
 from mt_quel_meas.qubeserver.util import _capture_channel_to_boxport
 
@@ -23,22 +23,22 @@ def _get_sequence_channel_from_capture_channel(
 
 
 def extract_dataset(
-    job: Job, job_qube_server: JobQubeServer, assign: QuelAssignment, dataset: dict[str, np.ndarray]
+    job: Job, job_qube_server: JobQubeServer, assign: AssignmentQuel, dataset: dict[str, np.ndarray]
 ) -> dict[str, np.ndarray]:
+
     result: dict[str, np.ndarray] = {}
     for capture_channel, data in dataset.items():
+
+        # restore information for creating Job
         sequence_channel = _get_sequence_channel_from_capture_channel(
             capture_channel, job_qube_server.sequence_chanenl_to_capture_channel
         )
         freq_modulate = job_qube_server.sequence_channel_to_frequency_modulation[sequence_channel]
-
         capture_point_list = job_qube_server.capture_channel_to_capture_point_list[capture_channel]
         num_capture_point = len(capture_point_list)
         preceding_time = job_qube_server.capture_channel_to_preceding_time[capture_channel]
-
         boxport = _capture_channel_to_boxport(capture_channel)
         sideband = job_qube_server.boxport_to_LO_sideband[boxport]
-
         num_shot = job.acquisition_config.num_shot
         num_time_slot = np.rint(
             (job.acquisition_config.acquisition_duration * assign.instrument_const.ADC_decimated_freq)[""]
@@ -53,6 +53,9 @@ def extract_dataset(
                 * assign.instrument_const.ADC_decimated_freq
             )[""]
         ).astype(int)
+
+
+        # Extract data according to the averaging modes
 
         # take adjoint if readout is LSB
         if sideband == "LSB":
@@ -126,5 +129,5 @@ def extract_dataset(
 
             result[sequence_channel] = result_data
         else:
-            assert False
+            raise ValueError("Unknown averaging modes")
     return result

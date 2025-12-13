@@ -128,14 +128,14 @@ def example1():
     target_qubit_list = [0, 1, 2, 3]
     num_qubit = 16
     num_window = 3
-    num_job = 5
+    num_job = 2
     num_shot = 10
-    flag_average_shots = False
+    flag_average_shots = True
     flag_average_waveform = False
+    enable_CR = True
 
     # create template
     num_averageing_window_sample = get_available_averaging_window_sample(CONST_QuEL1SE_LOW_FREQ)
-    enable_CR = True
     (
         sequence,
         channel_to_role,
@@ -147,7 +147,7 @@ def example1():
     ) = generate_template(num_qubit, target_qubit_list, num_averageing_window_sample, enable_CR)
 
     # create translator
-    quel_assignment = assign_to_quel(
+    assignment_quel = assign_to_quel(
         channel_to_role,
         channel_to_qubit_index_list,
         channel_to_frequency_reference,
@@ -176,7 +176,7 @@ def example1():
     # create seqeunce config
     sequence_config = sequence.get_config()
     for q in target_qubit_list:
-        sequence_config.get_parameter((f"Q{q}",))["FLATTOP"]["flattop_width"] = 500
+        sequence_config.get_parameter((f"Q{q}",))["FLATTOP"]["flattop_width"] = 300
         sequence_config.get_parameter((f"Q{q}",))["FLATTOP"]["flattop_amplitude"] = 0.24
         sequence_config.get_parameter((f"Q{q}",))["FLATTOP"]["flattop_phase"] = np.pi * (1.01 + 0.1)
 
@@ -195,10 +195,11 @@ def example1():
     for job_idx in range(num_job):
 
         # modify parameters for job
-        for q in target_qubit_list:
+        for i, q in enumerate(target_qubit_list):
             param = sequence_config.get_parameter((f"Q{q}",))
-            phase = np.pi * (0.44) + (2 * np.pi / num_job) * job_idx
-            param["FLATTOP"]["flattop_phase"] = phase
+            # phase = np.pi * (0.44) + (2 * np.pi / num_job) * job_idx
+            width = 200 + 100 * i
+            param["FLATTOP"]["flattop_width"] = width
 
         # create job
         job = Job(
@@ -211,13 +212,13 @@ def example1():
         )
 
         # bind job to qube server
-        job_qube_server = translate_job_qube_server(job, quel_assignment)
+        job_qube_server = translate_job_qube_server(job, assignment_quel)
 
         # do measurement
         result_qube_server = executor.do_measurement(job_qube_server)
 
         # extract data by binding information
-        result = extract_dataset(job, job_qube_server, quel_assignment, result_qube_server)
+        result = extract_dataset(job, job_qube_server, assignment_quel, result_qube_server)
 
         # plot result
         if acquisition_config.flag_average_shots:
@@ -341,5 +342,5 @@ def example2():
     plt.show()
 
 
-# example1()
-example2()
+example1()
+# example2()

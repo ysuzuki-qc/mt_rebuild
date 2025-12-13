@@ -6,7 +6,7 @@ from mt_pulse.pulse_preset import get_preset_pulse_library
 from mt_util.tunits_util import FrequencyType
 from mt_util.lattice_util import QubitLattice
 from mt_quel_util.constant import InstrumentConstantQuEL
-from mt_quel_meas.job import QuelAssignment
+from mt_quel_meas.job import AssignmentQuel
 
 _default_frequency_dict = {"qubit": 4.5 * tunits.units.GHz, "resonator": 6.6 * tunits.units.GHz}
 
@@ -86,7 +86,7 @@ def assign_to_quel(
     channel_to_frequency_reference: dict[str, str],
     wiring_dict: dict[str, dict[str, dict[str, Any]]],
     instrument_const: InstrumentConstantQuEL,
-) -> QuelAssignment:
+) -> AssignmentQuel:
     channel_to_device: dict[str, str] = {}
     channel_to_port_index: dict[str, int] = {}
     for channel, role in channel_to_role.items():
@@ -110,11 +110,11 @@ def assign_to_quel(
         else:
             raise ValueError(f"Unknown channel specifier: {channel}")
 
-    quel_assignment = QuelAssignment(
+    assignment = AssignmentQuel(
         sequence_channel_to_device=channel_to_device,
         sequence_channel_to_port_index=channel_to_port_index,
         sequence_channel_frequency_reference=channel_to_frequency_reference,
         wiring_dict=wiring_dict,
         instrument_const=instrument_const,
     )
-    return quel_assignment
+    return assignment

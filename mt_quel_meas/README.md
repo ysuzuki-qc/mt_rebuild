@@ -4,13 +4,24 @@ Interfaces to generate abstract experiment jobs and convert it to experimental i
 
 ## Overview
 
-The expected procedure is as follows.
+The expected procedure for experiment is as follows.
 
-1. Input instrument information and target qubit lists to generate 
-2. 
-- User-custom pulses can be generated with text serialization
-- Parametric treatment of pulse shapes
-- Convert pulses to paramter-fixed form; data-point array or numpy time-function
+1. Create `ParametricJob` with information such as number of target qubits
+2. Configure frequencies, sequences, averaging windows, and common settings to create a `Job`.
+3. Create binding from abstract job sequences to measurement instrument ports, `AssignmentQuel`
+4. Create concrete job dependent object `JobQubeServer` with from `Job` and `AssignmentQuel`
+5. Launch `JobExecutorQubeServer` and put `JobQubeServer` and obtain `ResultQubeServer`
+6. Convert `ResultQubeServer` to `Result` using `Job`, `JobQubeServer`, and `AssignmentQuel`
+
+- If you replace `QubeServer` to `Quelware`
+  - Create a function to create `JobQuelware` from `Job` and `AssignmentQuel`
+  - Create `JobExecutorQuelware` and `ResultQuelware` to communicate QuEL via quelware
+  - Create a fuction to convert `ResultQuelware` to `Result`
+
+- If you replace QuEL with other instruments, nammed Hoge.
+  - Create a function to binding abstract job to actual machine to create `HogeAssignment`
+  - Create `JobExecutorHoge`, `JobHoge`, `ResultHoge` according to the input and output of interfaces of `Hoge`
+  - Create a function to convert `ResultHoge` to `Result`
 
 ## Examples
 
