@@ -268,8 +268,8 @@ def example2():
 
     # set frequency
     for i, q in enumerate(target_qubit_list):
-        channel_to_frequency[f"Q{q}_qubit"] = 64.0*tunits.units.GHz
-        channel_to_frequency[f"Q{q}_resonator"] = 6.0*tunits.units.GHz
+        channel_to_frequency[f"Q{q}_qubit"] = 64.0 * tunits.units.GHz
+        channel_to_frequency[f"Q{q}_resonator"] = 6.0 * tunits.units.GHz
 
     # create seqeunce
     sequence.add_blank_command([f"Q{target_qubit_list[0]}_resonator"], 100)
@@ -340,6 +340,67 @@ def example2():
 
     plt.tight_layout()
     plt.show()
+
+
+def example3():
+    # config
+    enable_CR = True
+    num_averageing_window_sample = get_available_averaging_window_sample(CONST_QuEL1SE_LOW_FREQ)
+    num_qubit = 16
+
+    target_qubit_list = [0]
+    # create template
+    (
+        sequence,
+        channel_to_role,
+        channel_to_qubit_index_list,
+        channel_to_frequency,
+        channel_to_frequency_shift,
+        channel_to_frequency_reference,
+        channel_to_averaging_window,
+    ) = generate_template(num_qubit, target_qubit_list, num_averageing_window_sample, enable_CR)
+
+    # config center frequency
+    channel_to_frequency["Q0_qubit"] = 4 * tunits.units.GHz
+    channel_to_frequency["Q0_resonator"] = 6 * tunits.units.GHz
+    sequence.add_capture_command(["Q0_resonator"])
+    sequence.add_pulse("FLATTOP", {"channel": "Q0_resonator"})
+    sequence_config = sequence.get_config()
+    sequence_config.get_parameter(("Q0",))["FLATTOP"]["flattop_width"] = 500
+    acquisition_config = AcquisitionConfig()
+    acquisition_config.num_shot = 100
+
+    # create job
+    job = Job(
+        sequence,
+        sequence_config,
+        channel_to_frequency,
+        channel_to_frequency_shift,
+        channel_to_averaging_window,
+        acquisition_config,
+    )
+
+    # create translator
+    quel_assignment = assign_to_quel(
+        channel_to_role,
+        channel_to_qubit_index_list,
+        channel_to_frequency_reference,
+        wiring_dict_16Q,
+        CONST_QuEL1SE_LOW_FREQ,
+    )
+    # bind job to qube server
+    job_qube_server = translate_job_qube_server(job, quel_assignment)
+
+    # start executor
+    executor = JobExecutorQubeServer()
+
+    # do measurement
+    result_qube_server = executor.do_measurement(job_qube_server)
+
+    # extract data by binding information
+    result = extract_dataset(job, job_qube_server, quel_assignment, result_qube_server)
+
+    result
 
 
 example1()
