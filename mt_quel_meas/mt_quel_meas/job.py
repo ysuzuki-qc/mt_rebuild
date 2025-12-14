@@ -2,7 +2,6 @@ from dataclasses import dataclass
 import numpy as np
 from typing import Any
 from tunits.units import us, ms, ns
-from collections.abc import Iterable
 from mt_pulse.sequence import Sequence, SequenceConfig
 from mt_util.tunits_util import FrequencyType, TimeType
 from mt_quel_util.constant import InstrumentConstantQuEL

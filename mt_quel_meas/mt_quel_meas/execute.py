@@ -38,7 +38,8 @@ def extract_sweep_dims(sweep_parameter: list[dict[str, Iterable]]):
             else:
                 if axis_dims[axis_index] != len(axis_param):
                     raise ValueError(
-                        f"Sweep axis {axis_index}: {axis_dict} has different dimensions. Iterable parameter must have the same dimension."
+                        f"Sweep axis {axis_index}: {axis_dict} has different dimensions."
+                        "Iterable parameter must have the same dimension."
                     )
     return axis_dims
 
