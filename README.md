@@ -1,25 +1,24 @@
-# repository for rebuild measurement tools
+# Prototype for measuring superconducting qubits
 
 ## mt_circuit
 
-Synthesize quantum circuit and translation to executable form
+Synthesize quantum circuits and translate them to executable forms
 
 ## mt_pulse
 
-Refactored pulse sequencer
-
-## mt_quel_util
-
-Utility functions for measurements with QuEL.
-Maybe merged with mt_quel_meas later.
+Parameteric multi-channel pulse sequencer and waveform generators
 
 ## mt_quel_meas
 
-Build generic measurement job, translate it to an executable form, and execute it via qube server or quelware
+Create measurement jobs, assign them to instruments, and execute them via QubeServer
+
+## mt_quel_util
+
+Utility functions for QuEL instruments to conceal restrictions on timing and frequency
 
 ## mt_note
 
-dictionary with several features useful for interactive calibration
+A dictionary with several features that are useful for interactive calibration
 
 ## mt_util
 
