@@ -1,20 +1,18 @@
-from logging import DEBUG, basicConfig, getLogger
+import logging
 import json
 import tunits
 import numpy as np
 import matplotlib.pyplot as plt
 from mt_quel_meas.generate_job import generate_template, assign_to_quel
 from mt_quel_meas.job import Job, AcquisitionConfig
-from mt_quel_meas.qubeserver.translate import translate_job_qube_server
-from mt_quel_meas.qubeserver.execute import JobExecutorQubeServer
-from mt_quel_meas.qubeserver.extract import extract_dataset
+from mt_quel_meas.execute import execute, execute_sweep
 from mt_quel_util.constant import CONST_QuEL1SE_LOW_FREQ
 from mt_quel_util.acq_window_shift import get_available_averaging_window_sample
 
 
 format_str = "%(levelname)-7s : %(asctime)s : %(message)s"
-basicConfig(format=format_str)
-getLogger("mt_quel_meas").setLevel(DEBUG)
+logging.basicConfig(format=format_str)
+logging.getLogger("mt_quel_meas").setLevel(logging.DEBUG)
 
 with open("wiring_dict.json") as fin:
     wiring_dict_16Q = json.load(fin)
@@ -125,6 +123,56 @@ def plot_no_average(result: dict[str, np.ndarray], job_idx: int):
 
 def example1():
     # config
+    enable_CR = True
+    num_averageing_window_sample = get_available_averaging_window_sample(CONST_QuEL1SE_LOW_FREQ)
+    num_qubit = 16
+
+    target_qubit_list = [0]
+    # create template
+    (
+        sequence,
+        channel_to_role,
+        channel_to_qubit_index_list,
+        channel_to_frequency,
+        channel_to_frequency_shift,
+        channel_to_frequency_reference,
+        channel_to_averaging_window,
+    ) = generate_template(num_qubit, target_qubit_list, num_averageing_window_sample, enable_CR)
+
+    # config center frequency
+    channel_to_frequency["Q0_qubit"] = 4 * tunits.units.GHz
+    channel_to_frequency["Q0_resonator"] = 6 * tunits.units.GHz
+    sequence.add_capture_command(["Q0_resonator"])
+    sequence.add_pulse("FLATTOP", {"channel": "Q0_resonator"})
+    sequence_config = sequence.get_config()
+    sequence_config.get_parameter(("Q0",))["FLATTOP"]["flattop_width"] = 500
+    acquisition_config = AcquisitionConfig()
+    acquisition_config.num_shot = 100
+
+    # create job
+    job = Job(
+        sequence,
+        sequence_config,
+        channel_to_frequency,
+        channel_to_frequency_shift,
+        channel_to_averaging_window,
+        acquisition_config,
+    )
+
+    # create translator
+    assignment_quel = assign_to_quel(
+        channel_to_role,
+        channel_to_qubit_index_list,
+        channel_to_frequency_reference,
+        wiring_dict_16Q,
+        CONST_QuEL1SE_LOW_FREQ,
+    )
+
+    result = execute(job, assignment_quel)
+
+
+def example2():
+    # config
     target_qubit_list = [0, 1, 2, 3]
     num_qubit = 16
     num_window = 3
@@ -188,9 +236,6 @@ def example1():
     acquisition_config.acquisition_timeout = 3 * tunits.units.s
     acquisition_config.acquisition_delay = 1000 * tunits.units.ns
 
-    # start executor
-    executor = JobExecutorQubeServer()
-
     plt.figure(figsize=(20, 10))
     for job_idx in range(num_job):
 
@@ -211,14 +256,7 @@ def example1():
             acquisition_config,
         )
 
-        # bind job to qube server
-        job_qube_server = translate_job_qube_server(job, assignment_quel)
-
-        # do measurement
-        result_qube_server = executor.do_measurement(job_qube_server)
-
-        # extract data by binding information
-        result = extract_dataset(job, job_qube_server, assignment_quel, result_qube_server)
+        result = execute(job, assignment_quel)
 
         # plot result
         if acquisition_config.flag_average_shots:
@@ -236,7 +274,7 @@ def example1():
     plt.show()
 
 
-def example2():
+def example3():
     # config
     target_qubit_list = [0, 1, 2, 3]
     num_qubit = 16
@@ -258,7 +296,7 @@ def example2():
     ) = generate_template(num_qubit, target_qubit_list, num_averageing_window_sample, enable_CR)
 
     # create translator
-    quel_assignment = assign_to_quel(
+    assignment_quel = assign_to_quel(
         channel_to_role,
         channel_to_qubit_index_list,
         channel_to_frequency_reference,
@@ -294,8 +332,6 @@ def example2():
     acquisition_config.acquisition_timeout = 3 * tunits.units.s
     acquisition_config.acquisition_delay = 1000 * tunits.units.ns
 
-    # start executor
-    executor = JobExecutorQubeServer()
 
     plt.figure(figsize=(20, 10))
     num_job = 1
@@ -317,14 +353,7 @@ def example2():
             acquisition_config,
         )
 
-        # bind job to qube server
-        job_qube_server = translate_job_qube_server(job, quel_assignment)
-
-        # do measurement
-        result_qube_server = executor.do_measurement(job_qube_server)
-
-        # extract data by binding information
-        result = extract_dataset(job, job_qube_server, quel_assignment, result_qube_server)
+        result = execute(job, assignment_quel)
 
         # plot result
         if acquisition_config.flag_average_shots:
@@ -342,7 +371,7 @@ def example2():
     plt.show()
 
 
-def example3():
+def example4():
     # config
     enable_CR = True
     num_averageing_window_sample = get_available_averaging_window_sample(CONST_QuEL1SE_LOW_FREQ)
@@ -381,27 +410,148 @@ def example3():
     )
 
     # create translator
-    quel_assignment = assign_to_quel(
+    assignment_quel = assign_to_quel(
         channel_to_role,
         channel_to_qubit_index_list,
         channel_to_frequency_reference,
         wiring_dict_16Q,
         CONST_QuEL1SE_LOW_FREQ,
     )
-    # bind job to qube server
-    job_qube_server = translate_job_qube_server(job, quel_assignment)
 
-    # start executor
-    executor = JobExecutorQubeServer()
-
-    # do measurement
-    result_qube_server = executor.do_measurement(job_qube_server)
-
-    # extract data by binding information
-    result = extract_dataset(job, job_qube_server, quel_assignment, result_qube_server)
-
-    result
+    sweep_parameter = [
+        {"frequency_shift.Q0_qubit": np.linspace(-10, 10, 10) * tunits.units.MHz},
+    ]
 
 
-example1()
+    logging.getLogger("mt_quel_meas").setLevel(logging.WARN)
+    result = execute_sweep(job, assignment_quel, sweep_parameter)
+
+    for key, matrix in result.items():
+        print(key, matrix.shape)
+
+
+def example5():
+    # config
+    enable_CR = True
+    num_averageing_window_sample = get_available_averaging_window_sample(CONST_QuEL1SE_LOW_FREQ)
+    num_qubit = 16
+
+    target_qubit_list = [0]
+    # create template
+    (
+        sequence,
+        channel_to_role,
+        channel_to_qubit_index_list,
+        channel_to_frequency,
+        channel_to_frequency_shift,
+        channel_to_frequency_reference,
+        channel_to_averaging_window,
+    ) = generate_template(num_qubit, target_qubit_list, num_averageing_window_sample, enable_CR)
+
+    # config center frequency
+    channel_to_frequency["Q0_qubit"] = 4 * tunits.units.GHz
+    channel_to_frequency["Q0_resonator"] = 6 * tunits.units.GHz
+    sequence.add_capture_command(["Q0_resonator"])
+    sequence.add_pulse("FLATTOP", {"channel": "Q0_resonator"})
+    sequence_config = sequence.get_config()
+    sequence_config.get_parameter(("Q0",))["FLATTOP"]["flattop_width"] = 500
+    acquisition_config = AcquisitionConfig()
+    acquisition_config.num_shot = 100
+
+    # create job
+    job = Job(
+        sequence,
+        sequence_config,
+        channel_to_frequency,
+        channel_to_frequency_shift,
+        channel_to_averaging_window,
+        acquisition_config,
+    )
+
+    # create translator
+    assignment_quel = assign_to_quel(
+        channel_to_role,
+        channel_to_qubit_index_list,
+        channel_to_frequency_reference,
+        wiring_dict_16Q,
+        CONST_QuEL1SE_LOW_FREQ,
+    )
+
+    sweep_parameter = [
+        {"frequency_shift.Q0_qubit": np.linspace(-10, 10, 3) * tunits.units.MHz},
+        {"sequencer.Q0.FLATTOP.flattop_width": np.linspace(10, 100, 2)},
+    ]
+
+
+    logging.getLogger("mt_quel_meas").setLevel(logging.WARN)
+    result = execute_sweep(job, assignment_quel, sweep_parameter)
+
+    for key, matrix in result.items():
+        print(key, matrix.shape)
+
+
+def example6():
+    # config
+    enable_CR = True
+    num_averageing_window_sample = get_available_averaging_window_sample(CONST_QuEL1SE_LOW_FREQ)
+    num_qubit = 16
+
+    target_qubit_list = [0]
+    # create template
+    (
+        sequence,
+        channel_to_role,
+        channel_to_qubit_index_list,
+        channel_to_frequency,
+        channel_to_frequency_shift,
+        channel_to_frequency_reference,
+        channel_to_averaging_window,
+    ) = generate_template(num_qubit, target_qubit_list, num_averageing_window_sample, enable_CR)
+
+    # config center frequency
+    channel_to_frequency["Q0_qubit"] = 4 * tunits.units.GHz
+    channel_to_frequency["Q0_resonator"] = 6 * tunits.units.GHz
+    sequence.add_capture_command(["Q0_resonator"])
+    sequence.add_pulse("FLATTOP", {"channel": "Q0_resonator"})
+    sequence_config = sequence.get_config()
+    sequence_config.get_parameter(("Q0",))["FLATTOP"]["flattop_width"] = 500
+    acquisition_config = AcquisitionConfig()
+    acquisition_config.num_shot = 100
+
+    # create job
+    job = Job(
+        sequence,
+        sequence_config,
+        channel_to_frequency,
+        channel_to_frequency_shift,
+        channel_to_averaging_window,
+        acquisition_config,
+    )
+
+    # create translator
+    assignment_quel = assign_to_quel(
+        channel_to_role,
+        channel_to_qubit_index_list,
+        channel_to_frequency_reference,
+        wiring_dict_16Q,
+        CONST_QuEL1SE_LOW_FREQ,
+    )
+
+    sweep_parameter = [
+        {"frequency_shift.Q0_qubit": np.linspace(-10, 10, 3) * tunits.units.MHz,
+         "sequencer.Q0.FLATTOP.flattop_width": np.linspace(10, 100, 3)}
+    ]
+
+
+    logging.getLogger("mt_quel_meas").setLevel(logging.WARN)
+    result = execute_sweep(job, assignment_quel, sweep_parameter)
+
+    for key, matrix in result.items():
+        print(key, matrix.shape)
+
+# example1()
 # example2()
+# example3()
+# example4()
+# example5()
+example6()

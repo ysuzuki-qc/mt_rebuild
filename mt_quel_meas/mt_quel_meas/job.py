@@ -2,10 +2,10 @@ from dataclasses import dataclass
 import numpy as np
 from typing import Any
 from tunits.units import us, ms, ns
+from collections.abc import Iterable
 from mt_pulse.sequence import Sequence, SequenceConfig
 from mt_util.tunits_util import FrequencyType, TimeType
 from mt_quel_util.constant import InstrumentConstantQuEL
-
 
 @dataclass(frozen=False, slots=True)
 class AcquisitionConfig:
@@ -35,8 +35,3 @@ class AssignmentQuel:
     sequence_channel_to_port_index: dict[str, int]
     sequence_channel_frequency_reference: dict[str, str]
     instrument_const: InstrumentConstantQuEL
-
-@dataclass(frozen=True, slots=True)
-class SweepInformation:
-    parameter_key: list[str]
-    sweep_axis: list[dict[str, np.ndarray]]
