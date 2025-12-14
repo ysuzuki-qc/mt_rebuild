@@ -7,6 +7,7 @@ from mt_pulse.sequence import Sequence, SequenceConfig
 from mt_util.tunits_util import FrequencyType, TimeType
 from mt_quel_util.constant import InstrumentConstantQuEL
 
+
 @dataclass(frozen=False, slots=True)
 class AcquisitionConfig:
     num_shot: int = 1000

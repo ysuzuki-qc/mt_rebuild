@@ -7,6 +7,7 @@ from mt_quel_meas.qubeserver.translate import translate_job_qube_server
 from mt_quel_meas.qubeserver.extract import extract_dataset
 from mt_quel_meas.qubeserver.execute import JobExecutorQubeServer
 
+
 def execute(job: Job, assignment_quel: AssignmentQuel) -> dict[str, np.ndarray]:
     # start executor
     executor = JobExecutorQubeServer()
@@ -23,10 +24,11 @@ def execute(job: Job, assignment_quel: AssignmentQuel) -> dict[str, np.ndarray]:
     return result
 
 
-
 def extract_sweep_dims(sweep_parameter: list[dict[str, Iterable]]):
     num_axis = len(sweep_parameter)
-    axis_dims: list[int] = [-1,] * num_axis
+    axis_dims: list[int] = [
+        -1,
+    ] * num_axis
     for axis_index, axis_dict in enumerate(sweep_parameter):
         if len(axis_dict) == 0:
             raise ValueError(f"Sweep axis {axis_dict} has empty parameter. Each axis must have at least one parameter")
@@ -35,18 +37,24 @@ def extract_sweep_dims(sweep_parameter: list[dict[str, Iterable]]):
                 axis_dims[axis_index] = len(axis_param)
             else:
                 if axis_dims[axis_index] != len(axis_param):
-                    raise ValueError(f"Sweep axis {axis_index}: {axis_dict} has different dimensions. Iterable parameter must have the same dimension.")
+                    raise ValueError(
+                        f"Sweep axis {axis_index}: {axis_dict} has different dimensions. Iterable parameter must have the same dimension."
+                    )
     return axis_dims
+
 
 def get_sweep_state(index: int, sweep_dims: list[int]) -> list[int]:
     result: list[int] = []
     for dim in sweep_dims:
-        result.append(index%dim)
-        index//=dim
+        result.append(index % dim)
+        index //= dim
     return result
 
-def get_update_parameter_list(sweep_parameter: list[dict[str, Iterable]], sweep_state: list[int], last_sweep_state: list[int]) -> dict[str, Any]:
-    assert(len(sweep_state) == len(last_sweep_state))
+
+def get_update_parameter_list(
+    sweep_parameter: list[dict[str, Iterable]], sweep_state: list[int], last_sweep_state: list[int]
+) -> dict[str, Any]:
+    assert len(sweep_state) == len(last_sweep_state)
     result: dict[str, Any] = {}
     for axis_index in range(len(sweep_state)):
         index = sweep_state[axis_index]
@@ -57,26 +65,30 @@ def get_update_parameter_list(sweep_parameter: list[dict[str, Iterable]], sweep_
             result[name] = values[index]
     return result
 
+
 def process_update(name: str, value: Any, job: Job) -> None:
     elements = name.split(".")
-    assert(len(elements) >= 2)
+    assert len(elements) >= 2
     category = elements[0]
     handle = elements[1:]
     if category == "frequency_shift":
-        assert(len(handle)==1)
+        assert len(handle) == 1
         channel = handle[0]
         if channel not in job.sequence_channel_to_frequency_shift:
             raise ValueError(f"Channel for {channel} in parameter {name} not found")
         job.sequence_channel_to_frequency_shift[handle[0]] = value
     elif category == "sequencer":
-        assert(len(handle)==3)
+        assert len(handle) == 3
         group, pulse, param_name = handle
         group_tuple = tuple(group.split("_"))
         job.sequence_config.get_parameter(group_tuple)[pulse][param_name] = value
     else:
         raise ValueError(f"Unknown parameter category {category}")
 
-def execute_sweep(job: Job, assignment_quel: AssignmentQuel, sweep_parameter: list[dict[str, Iterable]], verbose: bool = True) -> dict[str, np.ndarray]:
+
+def execute_sweep(
+    job: Job, assignment_quel: AssignmentQuel, sweep_parameter: list[dict[str, Iterable]], verbose: bool = True
+) -> dict[str, np.ndarray]:
     # start executor
     executor = JobExecutorQubeServer()
 
@@ -86,7 +98,9 @@ def execute_sweep(job: Job, assignment_quel: AssignmentQuel, sweep_parameter: li
     for dim in sweep_dims:
         total_iteration *= dim
 
-    last_sweep_state = [-1,] * len(sweep_dims)
+    last_sweep_state = [
+        -1,
+    ] * len(sweep_dims)
     result_dict_list: dict[str, list[np.ndarray]] = {}
     with tqdm.tqdm(range(total_iteration), disable=(not verbose)) as progress_bar:
         for index in progress_bar:

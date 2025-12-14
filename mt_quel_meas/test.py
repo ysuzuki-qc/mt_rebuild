@@ -170,6 +170,8 @@ def example1():
 
     result = execute(job, assignment_quel)
 
+    result
+
 
 def example2():
     # config
@@ -332,7 +334,6 @@ def example3():
     acquisition_config.acquisition_timeout = 3 * tunits.units.s
     acquisition_config.acquisition_delay = 1000 * tunits.units.ns
 
-
     plt.figure(figsize=(20, 10))
     num_job = 1
     for job_idx in range(1):
@@ -422,7 +423,6 @@ def example4():
         {"frequency_shift.Q0_qubit": np.linspace(-10, 10, 10) * tunits.units.MHz},
     ]
 
-
     logging.getLogger("mt_quel_meas").setLevel(logging.WARN)
     result = execute_sweep(job, assignment_quel, sweep_parameter)
 
@@ -482,7 +482,6 @@ def example5():
         {"sequencer.Q0.FLATTOP.flattop_width": np.linspace(10, 100, 2)},
     ]
 
-
     logging.getLogger("mt_quel_meas").setLevel(logging.WARN)
     result = execute_sweep(job, assignment_quel, sweep_parameter)
 
@@ -538,16 +537,18 @@ def example6():
     )
 
     sweep_parameter = [
-        {"frequency_shift.Q0_qubit": np.linspace(-10, 10, 3) * tunits.units.MHz,
-         "sequencer.Q0.FLATTOP.flattop_width": np.linspace(10, 100, 3)}
+        {
+            "frequency_shift.Q0_qubit": np.linspace(-10, 10, 3) * tunits.units.MHz,
+            "sequencer.Q0.FLATTOP.flattop_width": np.linspace(10, 100, 3),
+        }
     ]
-
 
     logging.getLogger("mt_quel_meas").setLevel(logging.WARN)
     result = execute_sweep(job, assignment_quel, sweep_parameter)
 
     for key, matrix in result.items():
         print(key, matrix.shape)
+
 
 # example1()
 # example2()
