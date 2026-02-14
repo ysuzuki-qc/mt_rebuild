@@ -235,8 +235,8 @@ class JobExecutorQubeServer:
         logger.info(f"job execute | daq | job finished with {end} sec")
 
         # clear daq settings
-        logger.info("job execute | daq clear")
-        self._qube.daq_clear()
+        # logger.info("job execute | daq clear")
+        # self._qube.daq_clear()
 
     def _download_waveform(
         self,

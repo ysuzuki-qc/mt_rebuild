@@ -14,8 +14,6 @@ from mt_quel_meas.qubeserver.util import (
     _awg_channel_name,
     _capture_channel_name,
     _boxport_name,
-    _awg_channel_to_boxport,
-    _capture_channel_to_boxport,
 )
 
 logger = getLogger(__name__)
@@ -23,8 +21,8 @@ logger = getLogger(__name__)
 
 def _map_sequence_channel_to_awg_channel(assign: AssignmentQuel, mux_result: MultiplexingResult) -> dict[str, str]:
     sequence_channel_to_awg_channel: dict[str, str] = {}
-    for sequence_channel in assign.sequence_channel_to_device:
-        device = assign.sequence_channel_to_device[sequence_channel]
+    for sequence_channel in assign.sequence_channel_to_box_name:
+        device = assign.sequence_channel_to_box_name[sequence_channel]
         port_index = assign.sequence_channel_to_port_index[sequence_channel]
         dac_index = mux_result.channel_to_dac_index[sequence_channel]
         awg_channel = _awg_channel_name(device, port_index, assign.instrument_const.port_type[port_index], dac_index)
@@ -36,13 +34,14 @@ def _get_awg_channel_to_dac_unit(
     assign: AssignmentQuel, mux_result: MultiplexingResult
 ) -> dict[str, PhysicalUnitIdentifier]:
     awg_channel_to_dac_unit: dict[str, PhysicalUnitIdentifier] = {}
-    for sequence_channel in assign.sequence_channel_to_device:
-        device = assign.sequence_channel_to_device[sequence_channel]
+    for sequence_channel in assign.sequence_channel_to_box_name:
+        device = assign.sequence_channel_to_box_name[sequence_channel]
         port_index = assign.sequence_channel_to_port_index[sequence_channel]
         dac_index = mux_result.channel_to_dac_index[sequence_channel]
         awg_channel = _awg_channel_name(device, port_index, assign.instrument_const.port_type[port_index], dac_index)
+        print(awg_channel)
         if awg_channel not in awg_channel_to_dac_unit:
-            box_port = _boxport_name(device, port_index, assign.instrument_const.port_type[port_index])
+            box_port = _boxport_name(device, port_index, assign.wiring_dict)
             awg_channel_to_dac_unit[awg_channel] = PhysicalUnitIdentifier(box_port, dac_index)
 
         logger.info(
@@ -70,6 +69,7 @@ def _get_awg_channel_to_waveform(
     sequence_channel_to_awg_channel: dict[str, str],
     sequence_channel_to_waveform: dict[str, np.ndarray],
     sequence_channel_to_frequency_modulation: dict[str, FrequencyType],
+    sequence_channel_to_boxport: dict[str, str],
     boxport_to_LO_sideband: dict[str, Literal["USB", "LSB", "Direct"]],
     constant: InstrumentConstantQuEL,
 ):
@@ -93,7 +93,10 @@ def _get_awg_channel_to_waveform(
 
     # take adjoint if signal is used as LSB
     for awg_channel in awg_channel_to_waveform:
-        boxport = _awg_channel_to_boxport(awg_channel)
+        sequence_channel_filter = [_sequence_channel for _sequence_channel, _awg_channel in sequence_channel_to_awg_channel.items() if awg_channel == _awg_channel]
+        assert(len(sequence_channel_filter)>=1)
+        sequence_channel = sequence_channel_filter[0]
+        boxport = sequence_channel_to_boxport[sequence_channel]
         if boxport_to_LO_sideband[boxport] == "LSB":
             np.conj(awg_channel_to_waveform[awg_channel], out=awg_channel_to_waveform[awg_channel])
 
@@ -118,7 +121,7 @@ def _get_boxport_to_CNCO_frequency(mux_result: MultiplexingResult, assign: Assig
     boxport_to_CNCO_frequency: dict[str, FrequencyType] = {}
     for device in mux_result.CNCO_setting:
         for port_index in mux_result.CNCO_setting[device]:
-            boxport = _boxport_name(device, port_index, assign.instrument_const.port_type[port_index])
+            boxport = _boxport_name(device, port_index, assign.wiring_dict)
             boxport_to_CNCO_frequency[boxport] = mux_result.CNCO_setting[device][port_index]
     return boxport_to_CNCO_frequency
 
@@ -127,7 +130,7 @@ def _get_boxport_to_LO_frequency(mux_result: MultiplexingResult, assign: Assignm
     boxport_to_LO_frequency: dict[str, FrequencyType] = {}
     for device in mux_result.CNCO_setting:
         for port_index in mux_result.CNCO_setting[device]:
-            boxport = _boxport_name(device, port_index, assign.instrument_const.port_type[port_index])
+            boxport = _boxport_name(device, port_index, assign.wiring_dict)
             port_type = assign.instrument_const.port_type[port_index]
             if port_type == "ReadOut":
                 boxport_to_LO_frequency[boxport] = assign.instrument_const.LO_freq_resonator
@@ -146,7 +149,7 @@ def _get_boxport_to_LO_sideband(
     boxport_to_LO_sideband: dict[str, Literal["USB", "LSB", "Direct"]] = {}
     for device in mux_result.CNCO_setting:
         for port_index in mux_result.CNCO_setting[device]:
-            boxport = _boxport_name(device, port_index, assign.instrument_const.port_type[port_index])
+            boxport = _boxport_name(device, port_index, assign.wiring_dict)
             port_type = assign.instrument_const.port_type[port_index]
             if port_type == "ReadOut":
                 boxport_to_LO_sideband[boxport] = assign.instrument_const.LO_sideband_resonator
@@ -163,7 +166,7 @@ def _map_sequence_channel_to_capture_channel(
     assign: AssignmentQuel, mux_result: MultiplexingResult, sequence_channel_to_mux_index: dict[str, int]
 ) -> dict[str, str]:
     sequence_channel_to_capture_channel: dict[str, str] = {}
-    for sequence_channel in assign.sequence_channel_to_device:
+    for sequence_channel in assign.sequence_channel_to_box_name:
         port_index = assign.sequence_channel_to_port_index[sequence_channel]
         if assign.instrument_const.port_type[port_index] != "ReadOut":
             continue
@@ -171,7 +174,7 @@ def _map_sequence_channel_to_capture_channel(
         if dac_index != 0:
             raise ValueError(f"ReadOut port is assumed to have a single DAC, but index {dac_index} is specified")
 
-        device = assign.sequence_channel_to_device[sequence_channel]
+        device = assign.sequence_channel_to_box_name[sequence_channel]
         mux_index = sequence_channel_to_mux_index[sequence_channel]
         capture_channel = _capture_channel_name(
             device, port_index, assign.instrument_const.port_type[port_index], mux_index
@@ -190,14 +193,14 @@ def _get_capture_channel_to_adc_unit(
         if capture_channel in capture_channel_to_adc_unit:
             continue
 
-        device = assign.sequence_channel_to_device[sequence_channel]
+        device = assign.sequence_channel_to_box_name[sequence_channel]
         port_index = assign.sequence_channel_to_port_index[sequence_channel]
         mux_index = sequence_channel_to_mux_index[sequence_channel]
         capture_channel = _capture_channel_name(
             device, port_index, assign.instrument_const.port_type[port_index], mux_index
         )
         assert capture_channel not in capture_channel_to_adc_unit
-        box_port = _boxport_name(device, port_index, assign.instrument_const.port_type[port_index])
+        box_port = _boxport_name(device, port_index, assign.wiring_dict)
         capture_channel_to_adc_unit[capture_channel] = PhysicalUnitIdentifier(box_port, mux_index)
         logger.info(
             f"job translate | capture channel assign | seq-ch: {sequence_channel} - cap-ch: {capture_channel}"
@@ -268,6 +271,7 @@ def _get_capture_channel_to_averaging_window_coefficients(
     sequence_channel_to_capture_channel: dict[str, str],
     sequence_channel_to_averaging_window_coefficients: dict[str, np.ndarray],
     sequence_channel_to_frequency_modulation: dict[str, FrequencyType],
+    sequence_channel_to_boxport_name: dict[str, str],
     capture_channel_to_preceding_time: dict[str, TimeType],
     boxport_to_LO_sideband: dict[str, Literal["USB", "LSB", "Direct"]],
     constant: InstrumentConstantQuEL,
@@ -286,7 +290,7 @@ def _get_capture_channel_to_averaging_window_coefficients(
             adjusted_averaging_window_coefficients, freq_modulate, constant
         )
 
-        boxport = _capture_channel_to_boxport(capture_channel)
+        boxport = sequence_channel_to_boxport_name[sequence_channel]
         sideband = boxport_to_LO_sideband[boxport]
         if sideband == "LSB":
             np.conj(
@@ -342,7 +346,7 @@ def translate_job_qube_server(job: Job, assign: AssignmentQuel) -> JobQubeServer
 
     # resolve frequency reference (e.g., Q0_Q2_CR refers to freq of Q2_qubit)
     sequence_channel_to_frequency: dict[str, FrequencyType] = {}
-    for sequence_channel in assign.sequence_channel_to_device:
+    for sequence_channel in assign.sequence_channel_to_box_name:
         sequence_channel_reference = assign.sequence_channel_frequency_reference[sequence_channel]
         freq_ref = job.sequence_channel_to_frequency[sequence_channel_reference]
         sequence_channel_to_frequency[sequence_channel] = freq_ref
@@ -350,14 +354,14 @@ def translate_job_qube_server(job: Job, assign: AssignmentQuel) -> JobQubeServer
     # find assignment
     mux_result = get_multiplex_config(
         sequence_channel_to_frequency,
-        assign.sequence_channel_to_device,
+        assign.sequence_channel_to_box_name,
         assign.sequence_channel_to_port_index,
         assign.instrument_const,
     )
 
     # calculate modulation
     sequence_channel_to_frequency_modulation: dict[str, FrequencyType] = {}
-    for sequence_channel in assign.sequence_channel_to_device:
+    for sequence_channel in assign.sequence_channel_to_box_name:
         freq_shift = job.sequence_channel_to_frequency_shift[sequence_channel]
         freq_residual = mux_result.channel_to_residual_frequency[sequence_channel]
         freq_modulate = freq_shift + freq_residual
@@ -386,6 +390,7 @@ def translate_job_qube_server(job: Job, assign: AssignmentQuel) -> JobQubeServer
         sequence_channel_to_awg_channel,
         sequence_channel_to_waveform,
         sequence_channel_to_frequency_modulation,
+        assign.sequence_channel_to_boxport_name,
         boxport_to_LO_sideband,
         assign.instrument_const,
     )
@@ -442,6 +447,7 @@ def translate_job_qube_server(job: Job, assign: AssignmentQuel) -> JobQubeServer
         sequence_channel_to_capture_channel,
         job.sequence_channel_to_averaging_window,
         sequence_channel_to_frequency_modulation,
+        assign.sequence_channel_to_boxport_name,
         capture_channel_to_preceding_time,
         boxport_to_LO_sideband,
         assign.instrument_const,

@@ -3,7 +3,7 @@ import numpy as np
 from mt_quel_util.mod_demod import demodulate_waveform, demodulate_averaged_sample
 from mt_quel_meas.job import Job, AssignmentQuel
 from mt_quel_meas.qubeserver.job import JobQubeServer
-from mt_quel_meas.qubeserver.util import _capture_channel_to_boxport
+# from mt_quel_meas.qubeserver.util import _capture_channel_to_boxport
 
 logger = getLogger(__name__)
 
@@ -37,7 +37,8 @@ def extract_dataset(
         capture_point_list = job_qube_server.capture_channel_to_capture_point_list[capture_channel]
         num_capture_point = len(capture_point_list)
         preceding_time = job_qube_server.capture_channel_to_preceding_time[capture_channel]
-        boxport = _capture_channel_to_boxport(capture_channel)
+
+        boxport = assign.sequence_channel_to_boxport_name[sequence_channel]
         sideband = job_qube_server.boxport_to_LO_sideband[boxport]
         num_shot = job.acquisition_config.num_shot
         num_time_slot = np.rint(

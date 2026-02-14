@@ -87,32 +87,37 @@ def assign_to_quel(
     wiring_dict: dict[str, dict[str, dict[str, Any]]],
     instrument_const: InstrumentConstantQuEL,
 ) -> AssignmentQuel:
-    channel_to_device: dict[str, str] = {}
+    channel_to_box_name: dict[str, str] = {}
+    channel_to_boxport_name: dict[str, str] = {}
     channel_to_port_index: dict[str, int] = {}
     for channel, role in channel_to_role.items():
         qubit_index_list = channel_to_qubit_index_list[channel]
         if role == "qubit":
             assert len(qubit_index_list) == 1
             name = f"Q{qubit_index_list[0]}"
-            channel_to_device[channel] = wiring_dict[role][name]["device_name"]
+            channel_to_box_name[channel] = wiring_dict[role][name]["box_name"]
             channel_to_port_index[channel] = wiring_dict[role][name]["port_index"]
+            channel_to_boxport_name[channel] = wiring_dict[role][name]["boxport_name"]
         elif role == "resonator":
             assert len(qubit_index_list) == 1
             name = f"M{qubit_index_list[0]//4}"
-            channel_to_device[channel] = wiring_dict[role][name]["device_name"]
+            channel_to_box_name[channel] = wiring_dict[role][name]["box_name"]
             channel_to_port_index[channel] = wiring_dict[role][name]["port_index"]
+            channel_to_boxport_name[channel] = wiring_dict[role][name]["boxport_name"]
         elif role == "CR":
             assert len(qubit_index_list) == 2
             name = f"Q{qubit_index_list[0]}"
             role = "qubit"
-            channel_to_device[channel] = wiring_dict[role][name]["device_name"]
+            channel_to_box_name[channel] = wiring_dict[role][name]["box_name"]
             channel_to_port_index[channel] = wiring_dict[role][name]["port_index"]
+            channel_to_boxport_name[channel] = wiring_dict[role][name]["boxport_name"]
         else:
             raise ValueError(f"Unknown channel specifier: {channel}")
 
     assignment = AssignmentQuel(
-        sequence_channel_to_device=channel_to_device,
+        sequence_channel_to_box_name=channel_to_box_name,
         sequence_channel_to_port_index=channel_to_port_index,
+        sequence_channel_to_boxport_name=channel_to_boxport_name,
         sequence_channel_frequency_reference=channel_to_frequency_reference,
         wiring_dict=wiring_dict,
         instrument_const=instrument_const,

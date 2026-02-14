@@ -31,7 +31,8 @@ class Job:
 @dataclass(frozen=True, slots=True)
 class AssignmentQuel:
     wiring_dict: dict[str, dict[str, dict[str, Any]]]
-    sequence_channel_to_device: dict[str, str]
+    sequence_channel_to_box_name: dict[str, str]
     sequence_channel_to_port_index: dict[str, int]
+    sequence_channel_to_boxport_name: dict[str, str]
     sequence_channel_frequency_reference: dict[str, str]
     instrument_const: InstrumentConstantQuEL
