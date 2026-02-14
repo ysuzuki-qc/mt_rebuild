@@ -1,103 +1,127 @@
 {
     "qubit": {
         "Q0": {
-            "device_name": "quel1se-2-01",
+            "boxport_name": "quel1se-2-01-control_7",
+            "box_name": "quel1se-2-01",
             "port_index": 7
         },
         "Q1": {
-            "device_name": "quel1se-2-01",
-            "port_index": 6
-        },
-        "Q2": {
-            "device_name": "quel1se-2-01",
-            "port_index": 9
-        },
-        "Q3": {
-            "device_name": "quel1se-2-01",
-            "port_index": 8
-        },
-        "Q4": {
-            "device_name": "quel1se-2-02",
-            "port_index": 7
-        },
-        "Q5": {
-            "device_name": "quel1se-2-02",
-            "port_index": 6
-        },
-        "Q6": {
-            "device_name": "quel1se-2-02",
-            "port_index": 9
-        },
-        "Q7": {
-            "device_name": "quel1se-2-02",
-            "port_index": 8
-        },
-        "Q8": {
-            "device_name": "quel1se-2-03",
-            "port_index": 7
-        },
-        "Q9": {
-            "device_name": "quel1se-2-03",
+            "boxport_name": "quel1se-2-01-control_6",
+            "box_name": "quel1se-2-01",
             "port_index": 6
         },
         "Q10": {
-            "device_name": "quel1se-2-03",
+            "boxport_name": "quel1se-2-03-control_9",
+            "box_name": "quel1se-2-03",
             "port_index": 9
         },
         "Q11": {
-            "device_name": "quel1se-2-03",
+            "boxport_name": "quel1se-2-03-control_8",
+            "box_name": "quel1se-2-03",
             "port_index": 8
         },
         "Q12": {
-            "device_name": "quel1se-2-04",
+            "boxport_name": "quel1se-2-04-control_7",
+            "box_name": "quel1se-2-04",
             "port_index": 7
         },
         "Q13": {
-            "device_name": "quel1se-2-04",
+            "boxport_name": "quel1se-2-04-control_6",
+            "box_name": "quel1se-2-04",
             "port_index": 6
         },
         "Q14": {
-            "device_name": "quel1se-2-04",
+            "boxport_name": "quel1se-2-04-control_9",
+            "box_name": "quel1se-2-04",
             "port_index": 9
         },
         "Q15": {
-            "device_name": "quel1se-2-04",
+            "boxport_name": "quel1se-2-04-control_8",
+            "box_name": "quel1se-2-04",
             "port_index": 8
-        }
-    },
-    "resonator": {
-        "M0": {
-            "device_name": "quel1se-2-01",
-            "port_index": 1
         },
-        "M1": {
-            "device_name": "quel1se-2-02",
-            "port_index": 1
+        "Q2": {
+            "boxport_name": "quel1se-2-01-control_9",
+            "box_name": "quel1se-2-01",
+            "port_index": 9
         },
-        "M2": {
-            "device_name": "quel1se-2-03",
-            "port_index": 1
+        "Q3": {
+            "boxport_name": "quel1se-2-01-control_8",
+            "box_name": "quel1se-2-01",
+            "port_index": 8
         },
-        "M3": {
-            "device_name": "quel1se-2-04",
-            "port_index": 1
+        "Q4": {
+            "boxport_name": "quel1se-2-02-control_7",
+            "box_name": "quel1se-2-02",
+            "port_index": 7
+        },
+        "Q5": {
+            "boxport_name": "quel1se-2-02-control_6",
+            "box_name": "quel1se-2-02",
+            "port_index": 6
+        },
+        "Q6": {
+            "boxport_name": "quel1se-2-02-control_9",
+            "box_name": "quel1se-2-02",
+            "port_index": 9
+        },
+        "Q7": {
+            "boxport_name": "quel1se-2-02-control_8",
+            "box_name": "quel1se-2-02",
+            "port_index": 8
+        },
+        "Q8": {
+            "boxport_name": "quel1se-2-03-control_7",
+            "box_name": "quel1se-2-03",
+            "port_index": 7
+        },
+        "Q9": {
+            "boxport_name": "quel1se-2-03-control_6",
+            "box_name": "quel1se-2-03",
+            "port_index": 6
         }
     },
     "jpa": {
         "M0": {
-            "device_name": "quel1se-2-01",
+            "boxport_name": "quel1se-2-01-pump_2",
+            "box_name": "quel1se-2-01",
+            "port_index": 2
+        },
+        "M1": {
+            "boxport_name": "quel1se-2-02-pump_2",
+            "box_name": "quel1se-2-02",
+            "port_index": 2
+        },
+        "M2": {
+            "boxport_name": "quel1se-2-03-pump_2",
+            "box_name": "quel1se-2-03",
+            "port_index": 2
+        },
+        "M3": {
+            "boxport_name": "quel1se-2-04-pump_2",
+            "box_name": "quel1se-2-04",
+            "port_index": 2
+        }
+    },
+    "resonator": {
+        "M0": {
+            "boxport_name": "quel1se-2-01-readout_1",
+            "box_name": "quel1se-2-01",
             "port_index": 1
         },
         "M1": {
-            "device_name": "quel1se-2-02",
+            "boxport_name": "quel1se-2-02-readout_1",
+            "box_name": "quel1se-2-02",
             "port_index": 1
         },
         "M2": {
-            "device_name": "quel1se-2-03",
+            "boxport_name": "quel1se-2-03-readout_1",
+            "box_name": "quel1se-2-03",
             "port_index": 1
         },
         "M3": {
-            "device_name": "quel1se-2-04",
+            "boxport_name": "quel1se-2-04-readout_1",
+            "box_name": "quel1se-2-04",
             "port_index": 1
         }
     }
