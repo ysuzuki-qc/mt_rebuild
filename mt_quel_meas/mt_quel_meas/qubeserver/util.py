@@ -12,7 +12,7 @@ def _boxport_name(
         for component in wiring_dict[type]:
             if box_name == wiring_dict[type][component]["box_name"] and port_index == wiring_dict[type][component]["port_index"]:
                 return wiring_dict[type][component]["boxport_name"]
-    raise ValueError(f"Unexpected qube device specified: {device_name, port_index}")
+    raise ValueError(f"Unexpected qube device specified: {box_name, port_index}")
 
 
 def _boxport_to_device_and_port_index(boxport: str) -> tuple[str, int]:
